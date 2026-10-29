@@ -245,21 +245,15 @@ http.createServer((req, res) => {
         const nome = n ? decodeURIComponent(n).slice(0, 32) : membro.user.username;
         const dm = new EmbedBuilder()
           .setColor(PURPLE)
-          .setTitle('🎉 PARABÉNS, VERIFICAÇÃO APROVADA!')
-          .setDescription(`Parabéns, **${nome}**! 🏆\n\nAgora o território é teu: **jogar, viver boas partidas e se divertir** do teu jeito.\n\nTeu cartão de boas-vindas está logo abaixo 👇`)
+          .setTitle(`👑 BEM-VINDO À FAMÍLIA!`)
+          .setDescription(`Parabéns, **${nome}**! 🏆\n\nO teu lugar na família está marcado: **jogar, viver boas partidas e se divertir** do teu jeito.\n\nTeu cartão de boas-vindas está logo abaixo 👇`)
           .setFooter({ text: 'GAMER ZONE' })
           .setTimestamp();
         const comps = [];
         const est0 = getEstatico();
         if (est0) comps.push(new ButtonBuilder().setLabel('👑 CARTÃO DE BOAS-VINDAS').setStyle(ButtonStyle.Link).setURL(`${est0}/bemvindo.html?n=${encodeURIComponent(nome)}`));
         const gifUsu = GIF_USUARIO && fs.existsSync(GIF_USUARIO) ? [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] : null;
-        // GIF primeiro (no topo)
-        if (gifUsu) {
-          await membro.user.send({ files: gifUsu })
-            .then(() => console.log('🎁 GIF entregue no topo'))
-            .catch(() => {});
-        }
-        // Mensagem com GIF EMBAIXADO (imagem do embed) + botão — gift acima, mensagem, gift abaixo, botão
+        // Um único GIF (dentro da mensagem) + botão do cartão
         if (gifUsu) dm.setImage('attachment://usuario.gif');
         const payload = { embeds: [dm], files: gifUsu || [] };
         if (comps.length) payload.components = [new ActionRowBuilder().addComponents(...comps)];
@@ -269,13 +263,14 @@ http.createServer((req, res) => {
         // Aparição no canal de boas-vindas após ser aceito — GIF de ENTRADA, público pra todos
         const canalBV = guild.channels.cache.find(c => c.name.includes('boas-vindas'));
         if (canalBV) {
-                    const sendo = new EmbedBuilder()
+          const sendo = new EmbedBuilder()
             .setColor(PURPLE)
-            .setDescription(`**${nome}** concluiu a verificação e está oficialmente aceito ✅\n\nAgora é jogar, viver boas partidas e se divertir 🎮🔥`)
-            .setFooter({ text: 'Gamer Zone · Protegido pelo ECO 🛡️' })
+            .setAuthor({ name: 'novato da família', iconURL: membro.user.displayAvatarURL() })
+            .setDescription(`O Gamer Zone abriu as portas pra ti e a família já querendo jogar junto 🎮🔥\n\nSolta a oi na conversa, mostra as tuas gameplays e encontra o teu time — aqui todo mundo é da mesma partida. 💜`)
+            .setFooter({ text: 'Gamer Zone · Juntos desde o primeiroOi' })
             .setTimestamp();
           if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) await canalBV.send({ files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }] }).catch(() => {});
-          canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆`, embeds: [sendo] }).catch(() => {});
+          canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆\nVem jogar com a gente e chama no bom dia 💜`, embeds: [sendo] }).catch(() => {});
         }
         endJson(res, { ok: true });
         console.log('✅ Verificação concluída para:', membro.user.tag, '| cargo', cargo ? 'aplicado' : 'NÃO ENCONTRADO');
