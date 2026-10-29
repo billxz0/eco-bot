@@ -46,12 +46,13 @@ const refrescarGifs = () => {
   GIF_REGRAS  = pedirGif(DIR_REGRAS, 'r');
   if (NUVEM && fs.existsSync(path.join(BASE, 'regulamento.pdf'))) PDF_REGRAS = path.join(BASE, 'regulamento.pdf');
 };
-const PORTFOLIO   = path.join(BASE, 'portfólio.html');
+const PORTFOLIO   = path.join(BASE, NUVEM ? 'index.html' : 'portfólio.html');
 const VERIFICAR   = path.join(BASE, 'verificar.html');
 const BEMVINDO    = path.join(BASE, 'bemvindo.html');
 
 const arq = (file, nome) => (file && fs.existsSync(file) ? { attachment: file, name: nome } : null);
-const getSiteUrl = () => {  // túnel (usado SÓ na verificação)
+const getSiteUrl = () => {  // túnel (modo PC) — na NUVEM usa a URL fixa do Render
+  if (NUVEM) return (process.env.RENDER_EXTERNAL_URL || '').trim().replace(/\/+$/, '') || null;
   try { return fs.readFileSync(path.join(__dirname, 'site-url.txt'), 'utf8').trim().replace(/\/+$/, ''); } catch { return null; }
 };
 const getEstatico = () => { // domínio FIXO do GitHub Pages (eterno)
@@ -63,7 +64,7 @@ async function baixarAssets() {
   const est = getEstatico();
   if (!est) return console.log('⚠️ Sem domínio fixo — assets remotos indisponíveis.');
   try { fs.mkdirSync(path.join(__dirname, 'assets'), { recursive: true }); } catch {}
-  const itens = [['entrada.gif', 'entrada.gif'], ['saida.gif', 'saida.gif'], ['usuario.gif', 'usuario.gif'], ['regras.gif', 'regras.gif'], ['regulamento.pdf', 'regulamento.pdf']];
+  const itens = [['entrada.gif', 'entrada.gif'], ['saida.gif', 'saida.gif'], ['usuario.gif', 'usuario.gif'], ['regras.gif', 'regras.gif'], ['regulamento.pdf', 'regulamento.pdf'], ['index.html', 'index.html'], ['bemvindo.html', 'bemvindo.html'], ['verificar.html', 'verificar.html']];
   for (const [remoto, local] of itens) {
     const alvo = path.join(__dirname, 'assets', local);
     if (fs.existsSync(alvo)) continue;
@@ -404,7 +405,7 @@ client.once('clientReady', async () => {
     await postarPainelVerificacao(guild);
     await postarRegras(guild);
     await montarPainelStats(guild);
-    monitorarTunel(guild).catch(() => {});
+    if (!NUVEM) monitorarTunel(guild).catch(() => {});
     console.log('✅ Painéis publicados no servidor');
   }
 });
