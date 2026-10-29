@@ -512,7 +512,11 @@ client.on('messageDelete', (msg) => {
 process.on('unhandledRejection', e => console.error('🛡️ Rejeição capturada (ECO vivo):', e?.message || e));
 process.on('uncaughtException', e => console.error('🛡️ Exceção capturada (ECO vivo):', e?.message || e));
 
-client.login(process.env.DISCORD_TOKEN).catch(e => {
+const TOK = (process.env.DISCORD_TOKEN || '').trim();
+if (!TOK) console.error('❌ Token AUSENTE — variável DISCORD_TOKEN não configurada no Render (Environment).');
+else console.log(`🔑 Token recebido: ${TOK.length} caracteres, começa com "${TOK.slice(0, 4)}..."`);
+client.login(TOK).catch(e => {
   console.error('❌ FALHA NO LOGIN:', e.message);
   if (String(e).includes('disallowed intents')) console.error('👉 Ativa no portal: SERVER MEMBERS INTENT + MESSAGE CONTENT INTENT');
+  else if (String(e).includes('invalid')) console.error('👉 Token inválido: gera NOVO no portal (Bot → Reset Token), copia que já vai abrir o campo, e cola no Render → Environment → DISCORD_TOKEN (sem espaços). Depois Manual Deploy.');
 });
