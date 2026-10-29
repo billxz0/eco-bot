@@ -246,19 +246,16 @@ http.createServer((req, res) => {
         const dm = new EmbedBuilder()
           .setColor(PURPLE)
           .setTitle(`👑 BEM-VINDO À FAMÍLIA!`)
-          .setDescription(`Parabéns, **${nome}**! 🏆\n\nAgora você faz parte da família: jogue, faça novas amizades e aproveite a comunidade do seu jeito.\n\nTeu cartão de boas-vindas está logo abaixo 👇`)
+          .setDescription(`Parabéns, **${nome}**! 🏆\n\nAgora você faz parte da família: jogue, faça novas amizades e aproveite a comunidade do seu jeito. 💜\n\nConfere teu cartão de boas-vindas no botão abaixo 👇`)
           .setFooter({ text: 'GAMER ZONE' })
           .setTimestamp();
         const comps = [];
         const est0 = getEstatico();
         if (est0) comps.push(new ButtonBuilder().setLabel('👑 CARTÃO DE BOAS-VINDAS').setStyle(ButtonStyle.Link).setURL(`${est0}/bemvindo.html?n=${encodeURIComponent(nome)}`));
         const gifUsu = GIF_USUARIO && fs.existsSync(GIF_USUARIO) ? [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] : null;
-        // Ordem: 1º GIF (solo) → 2º mensagem: "cartão logo abaixo" + botão logo embaixo
-        if (gifUsu) {
-          await membro.user.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setImage('attachment://usuario.gif')], files: gifUsu })
-            .catch(() => {});
-        }
-        const payload = { embeds: [dm] };
+        // Mensagem única: gif EMBUTIDO entre o texto e o botão do cartão
+        if (gifUsu) dm.setImage('attachment://usuario.gif');
+        const payload = { embeds: [dm], files: gifUsu || [] };
         if (comps.length) payload.components = [new ActionRowBuilder().addComponents(...comps)];
         membro.user.send(payload)
           .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
@@ -274,7 +271,7 @@ http.createServer((req, res) => {
           if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) {
             sendo.setImage('attachment://entrada.gif');
             canalBV.send({
-              content: `👑 **${nome}** juntou-se à Família! 🏆\nVem jogar com a gente e chama no bom dia 💜`,
+              content: `👑 **${nome}** juntou-se à Família! 🏆`,
               embeds: [sendo],
               files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }],
             }).catch(() => {});
