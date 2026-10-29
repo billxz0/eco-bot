@@ -246,19 +246,22 @@ http.createServer((req, res) => {
         const dm = new EmbedBuilder()
           .setColor(PURPLE)
           .setTitle('🎉 PARABÉNS, VERIFICAÇÃO APROVADA!')
-          .setDescription(`Parabéns, **${nome}**! 🏆\n\nAgora o território é teu: **jogar, viver boas partidas e se divertir** do teu jeito.\n\nTinha teu cartão de boas-vindas? Toma logo abaixo 👇`)
+          .setDescription(`Parabéns, **${nome}**! 🏆\n\nAgora o território é teu: **jogar, viver boas partidas e se divertir** do teu jeito.\n\nTeu cartão de boas-vindas está logo abaixo 👇`)
           .setFooter({ text: 'GAMER ZONE' })
           .setTimestamp();
         const comps = [];
         const est0 = getEstatico();
         if (est0) comps.push(new ButtonBuilder().setLabel('👑 CARTÃO DE BOAS-VINDAS').setStyle(ButtonStyle.Link).setURL(`${est0}/bemvindo.html?n=${encodeURIComponent(nome)}`));
-        // GIF primeiro (no topo), mensagem logo abaixo
-        if (GIF_USUARIO && fs.existsSync(GIF_USUARIO)) {
-          await membro.user.send({ files: [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] })
-            .then(() => console.log('🎁 GIF do EFÉRO entregue no topo'))
-            .catch(e => console.error('⚠️ GIF na DM falhou:', e.message));
+        const gifUsu = GIF_USUARIO && fs.existsSync(GIF_USUARIO) ? [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] : null;
+        // GIF primeiro (no topo)
+        if (gifUsu) {
+          await membro.user.send({ files: gifUsu })
+            .then(() => console.log('🎁 GIF entregue no topo'))
+            .catch(() => {});
         }
-        const payload = { embeds: [dm] };
+        // Mensagem com GIF EMBAIXADO (imagem do embed) + botão — gift acima, mensagem, gift abaixo, botão
+        if (gifUsu) dm.setImage('attachment://usuario.gif');
+        const payload = { embeds: [dm], files: gifUsu || [] };
         if (comps.length) payload.components = [new ActionRowBuilder().addComponents(...comps)];
         membro.user.send(payload)
           .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
@@ -273,14 +276,6 @@ http.createServer((req, res) => {
             .setTimestamp();
           if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) await canalBV.send({ files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }] }).catch(() => {});
           canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆`, embeds: [sendo] }).catch(() => {});
-          // DM separando: cartão no domínio FIXO
-          const est1 = getEstatico();
-          if (est1 && GIF_USUARIO && fs.existsSync(GIF_USUARIO)) {
-            await membro.user.send({
-              files: [{ attachment: GIF_USUARIO, name: 'usuario.gif' }],
-              components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('👑 ABRIR CARTÃO DE BOAS-VINDAS').setStyle(ButtonStyle.Link).setURL(`${est1}/bemvindo.html?n=${encodeURIComponent(nome)}`))],
-            }).catch(() => {});
-          }
         }
         endJson(res, { ok: true });
         console.log('✅ Verificação concluída para:', membro.user.tag, '| cargo', cargo ? 'aplicado' : 'NÃO ENCONTRADO');
