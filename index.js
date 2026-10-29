@@ -285,9 +285,6 @@ http.createServer((req, res) => {
             canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆`, embeds: [sendo] }).catch(() => {});
           }
         }
-        membro.user.send(payload)
-          .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
-          .catch(e => console.error('⚠️ Falha na DM (checa Privacidade do Discord do usuário):', e.message));
         endJson(res, { ok: true });
         console.log('✅ Verificação concluída para:', membro.user.tag, '| cargo', cargo ? 'aplicado' : 'NÃO ENCONTRADO');
         if (dado.apagarMsg) { dado.apagarMsg(); console.log('🧹 Mensagem do link removida após verificação'); }
