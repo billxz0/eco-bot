@@ -120,9 +120,6 @@ async function postarPainelVerificacao(guild) {
     .setFooter({ text: 'Sistema de Segurança ECO' })
     .setTimestamp();
   const comps = [];
-  const estP = getEstatico();
-  if (estP) comps.push(new ButtonBuilder().setLabel('📜 PORTAL DO REGULAMENTO').setStyle(ButtonStyle.Link).setURL(estP));
-  if (siteUrl) comps.push(new ButtonBuilder().setLabel('🌐 ABRIR PORTAL').setStyle(ButtonStyle.Link).setURL(siteUrl));
   comps.push(new ButtonBuilder().setCustomId('iniciar').setLabel('🔐 INICIAR VERIFICAÇÃO').setStyle(ButtonStyle.Success));
   await canalVerif.send({
     embeds: [e],
@@ -148,7 +145,7 @@ async function postarRegras(guild) {
   const files = [PDF_REGRAS, arq(GIF_REGRAS, 'regras.gif')].filter(Boolean);
   await canal.send({ embeds: [e], files }).catch(() => {});
   // Botão do portal com nick automático
-  const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('portal').setLabel('👤 MEU PORTAL DO REGULAMENTO').setStyle(ButtonStyle.Success));
+  const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('portal').setLabel('📜 REGRAS').setStyle(ButtonStyle.Success));
   await canal.send({ components: [row] }).catch(() => {});
 }
 
