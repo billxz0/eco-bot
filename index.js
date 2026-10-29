@@ -253,13 +253,20 @@ http.createServer((req, res) => {
         const est0 = getEstatico();
         if (est0) comps.push(new ButtonBuilder().setLabel('👑 CARTÃO DE BOAS-VINDAS').setStyle(ButtonStyle.Link).setURL(`${est0}/bemvindo.html?n=${encodeURIComponent(nome)}`));
         const gifUsu = GIF_USUARIO && fs.existsSync(GIF_USUARIO) ? [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] : null;
-        // Ordem: 1º gif (em cima) → 2º mensagem texto + botão do cartão
+        // Layout igual ao print: 1º gif (em cima) → 2º texto + botão → 3º gif (embaixo)
         if (gifUsu) {
           await membro.user.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setImage('attachment://usuario.gif')], files: gifUsu })
             .catch(() => {});
         }
         const payload = { embeds: [dm] };
         if (comps.length) payload.components = [new ActionRowBuilder().addComponents(...comps)];
+        membro.user.send(payload)
+          .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
+          .catch(e => console.error('⚠️ Falha na DM (checa Privacidade do Discord do usuário):', e.message));
+        if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) {
+          await membro.user.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setImage('attachment://entrada.gif')], files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }] })
+            .catch(() => {});
+        }
         // Aparição no canal de boas-vindas após ser aceito — GIF de ENTRADA, público pra todos
         const canalBV = guild.channels.cache.find(c => c.name.includes('boas-vindas'));
         if (canalBV) {
