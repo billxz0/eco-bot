@@ -263,11 +263,10 @@ http.createServer((req, res) => {
         membro.user.send(payload)
           .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
           .catch(e => console.error('⚠️ Falha na DM (checa Privacidade do Discord do usuário):', e.message));
-        if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) {
-          await membro.user.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setImage('attachment://entrada.gif')], files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }] })
+        if (GIF_USUARIO && fs.existsSync(GIF_USUARIO)) {
+          await membro.user.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setImage('attachment://usuario.gif')], files: [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] })
             .catch(() => {});
         }
-        // Aparição no canal de boas-vindas após ser aceito — GIF de ENTRADA, público pra todos
         const canalBV = guild.channels.cache.find(c => c.name.includes('boas-vindas'));
         if (canalBV) {
           const sendo = new EmbedBuilder()
