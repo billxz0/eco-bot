@@ -246,7 +246,7 @@ http.createServer((req, res) => {
         const dm = new EmbedBuilder()
           .setColor(PURPLE)
           .setTitle(`👑 BEM-VINDO À FAMÍLIA!`)
-          .setDescription(`Parabéns, **${nome}**! 🏆\n\nO teu lugar na família está marcado: **jogar, viver boas partidas e se divertir** do teu jeito.\n\nTeu cartão de boas-vindas está logo abaixo 👇`)
+          .setDescription(`Parabéns, **${nome}**! 🏆\n\nAgora você faz parte da família: jogue, faça novas amizades e aproveite a comunidade do seu jeito.\n\nTeu cartão de boas-vindas está logo abaixo 👇`)
           .setFooter({ text: 'GAMER ZONE' })
           .setTimestamp();
         const comps = [];
@@ -265,9 +265,8 @@ http.createServer((req, res) => {
         if (canalBV) {
           const sendo = new EmbedBuilder()
             .setColor(PURPLE)
-            .setAuthor({ name: 'novato da família', iconURL: membro.user.displayAvatarURL() })
-            .setDescription(`O Gamer Zone abriu as portas pra ti e a família já querendo jogar junto 🎮🔥\n\nSolta a oi na conversa, mostra as tuas gameplays e encontra o teu time — aqui todo mundo é da mesma partida. 💜`)
-            .setFooter({ text: 'Gamer Zone · Juntos desde o primeiroOi' })
+            .setDescription(`Seja bem-vindo ao **Gamer Zone**! Agora você faz parte da família.\n\nJogue, compartilhe suas gameplays e aproveite a comunidade. 💜`)
+            .setFooter({ text: 'Gamer Zone' })
             .setTimestamp();
           if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) {
             sendo.setImage('attachment://entrada.gif');
@@ -277,7 +276,7 @@ http.createServer((req, res) => {
               files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }],
             }).catch(() => {});
           } else {
-            canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆\nVem jogar com a gente e chama no bom dia 💜`, embeds: [sendo] }).catch(() => {});
+            canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆`, embeds: [sendo] }).catch(() => {});
           }
         }
         endJson(res, { ok: true });
