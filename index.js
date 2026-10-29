@@ -269,8 +269,16 @@ http.createServer((req, res) => {
             .setDescription(`O Gamer Zone abriu as portas pra ti e a família já querendo jogar junto 🎮🔥\n\nSolta a oi na conversa, mostra as tuas gameplays e encontra o teu time — aqui todo mundo é da mesma partida. 💜`)
             .setFooter({ text: 'Gamer Zone · Juntos desde o primeiroOi' })
             .setTimestamp();
-          if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) await canalBV.send({ files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }] }).catch(() => {});
-          canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆\nVem jogar com a gente e chama no bom dia 💜`, embeds: [sendo] }).catch(() => {});
+          if (GIF_ENTRADA && fs.existsSync(GIF_ENTRADA)) {
+            sendo.setImage('attachment://entrada.gif');
+            canalBV.send({
+              content: `👑 **${nome}** juntou-se à Família! 🏆\nVem jogar com a gente e chama no bom dia 💜`,
+              embeds: [sendo],
+              files: [{ attachment: GIF_ENTRADA, name: 'entrada.gif' }],
+            }).catch(() => {});
+          } else {
+            canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆\nVem jogar com a gente e chama no bom dia 💜`, embeds: [sendo] }).catch(() => {});
+          }
         }
         endJson(res, { ok: true });
         console.log('✅ Verificação concluída para:', membro.user.tag, '| cargo', cargo ? 'aplicado' : 'NÃO ENCONTRADO');
