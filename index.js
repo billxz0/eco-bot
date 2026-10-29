@@ -253,16 +253,13 @@ http.createServer((req, res) => {
         const est0 = getEstatico();
         if (est0) comps.push(new ButtonBuilder().setLabel('👑 CARTÃO DE BOAS-VINDAS').setStyle(ButtonStyle.Link).setURL(`${est0}/bemvindo.html?n=${encodeURIComponent(nome)}`));
         const gifUsu = GIF_USUARIO && fs.existsSync(GIF_USUARIO) ? [{ attachment: GIF_USUARIO, name: 'usuario.gif' }] : null;
-        // Ordem: 1º mensagem (texto + botão do cartão) → 2º mensagem: gif (fica abaixo do botão)
-        const payload = { embeds: [dm] };
-        if (comps.length) payload.components = [new ActionRowBuilder().addComponents(...comps)];
-        membro.user.send(payload)
-          .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
-          .catch(e => console.error('⚠️ Falha na DM (checa Privacidade do Discord do usuário):', e.message));
+        // Ordem: 1º gif (em cima) → 2º mensagem texto + botão do cartão
         if (gifUsu) {
           await membro.user.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setImage('attachment://usuario.gif')], files: gifUsu })
             .catch(() => {});
         }
+        const payload = { embeds: [dm] };
+        if (comps.length) payload.components = [new ActionRowBuilder().addComponents(...comps)];
         // Aparição no canal de boas-vindas após ser aceito — GIF de ENTRADA, público pra todos
         const canalBV = guild.channels.cache.find(c => c.name.includes('boas-vindas'));
         if (canalBV) {
@@ -282,6 +279,9 @@ http.createServer((req, res) => {
             canalBV.send({ content: `👑 **${nome}** juntou-se à Família! 🏆`, embeds: [sendo] }).catch(() => {});
           }
         }
+        membro.user.send(payload)
+          .then(() => console.log('🎁 DM do ECO enviada para:', membro.user.tag))
+          .catch(e => console.error('⚠️ Falha na DM (checa Privacidade do Discord do usuário):', e.message));
         endJson(res, { ok: true });
         console.log('✅ Verificação concluída para:', membro.user.tag, '| cargo', cargo ? 'aplicado' : 'NÃO ENCONTRADO');
         if (dado.apagarMsg) { dado.apagarMsg(); console.log('🧹 Mensagem do link removida após verificação'); }
