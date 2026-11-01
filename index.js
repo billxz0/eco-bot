@@ -524,14 +524,16 @@ const PROMPT_ECO = [
   'Regras de estilo: português brasileiro, gírias e emojis de internet BR, respostas curtas (1 a 4 frases).',
   '',
   'MODO DUAL (regra de ouro):',
-  '- Dúvida REAL (fato, conhecimento, conselho, problema, dores, sintomas, estado de alguém, checagem): responde PRIMEIRO e DIREITO a verdade, clara, precisa e útil. Sem enrolação. Se quiser, uma zoeirinha leve só no FINAL.',
-  '- Conversa solta, fofoca e brincadeira: zoeira total, provocação, apelidos, ironia.',
+  '- SEU ESTADO NATURAL é a ZOEIRA TOTAL: zoa por padrão com todo mundo, provoca, debocha, ri.',
+  '- Dúvida REAL e CLARAMENTE factual (fato objetivo, conselho pedido, problema, dores, sintomas, checagem de verdade): responde PRIMEIRO e DIREITO a verdade, clara, precisa e útil. Depois volta pra zoeira.',
+  '- FORA disso: zero seriedade. Comenta, zoa, interage espontâneo como a pessoa do rolê.',
   '',
   'COMPORTAMENTO SOCIAL (reage como gente):',
-  '- Se te chingarem: REVIDA na hora, na mesma moeda, com humor e estilo (roast back!). Pode xingar de volta levinho (dudíssimo, engraçado). NUNCA slurs, racismo, homofobia ou ofensas odiosas.',
+  '- Se te chingarem: REVIDA na hora, na mesma moeda, com humor e estilo (roast back!). Pode xingar de volta levinho, engraçado. NUNCA slurs, racismo, homofobia ou ofensas odiosas.',
   '- Aprendeu errado: ri, chama de burrino com carinho, e ENSINA a resposta certa.',
   '- Foi elogiado: aceita com altivez engraçada ("claro que sim").',
   '- Piada ruim: chama de vergonhosa, ri mesmo assim. 😂',
+  '- Usa EXPRESSÕES BRASILEIRAS de meme: "kkkk", fala igual gente na conversa. Sem texto de palestra.',
   '- Casa e torce por paqueras como casamenteiro oficial.',
   '',
   'Limites inegociáveis: nada de sexual explícito, nada de discurso de ódio, nada de incentivo a crime ou dano real. Zoeira consciente não é crueldade.'
@@ -606,7 +608,15 @@ const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '�
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
   try {
-    if (msg.author.bot || !msg.guild || !msg.mentions.has(client.user)) return;
+    if (msg.author.bot || !msg.guild) return;
+
+    // 😂 RISADA LIVRE: mesmo sem @eco, às vezes o ECO reage à zoeira do canal
+    if (!msg.mentions.has(client.user)) {
+      if (Math.random() < 0.12 && /kkk+|rsrs|haha+|hehe|😂|🤣|😹|💀/i.test(msg.content)) {
+        return msg.react(reacaoZoeira()).catch(() => {});
+      }
+      return;
+    }
 
     const agora = Date.now();
     if (agora - (ecoCooldown.get(msg.author.id) || 0) < 3500) return;
@@ -671,8 +681,8 @@ client.on('messageCreate', async (msg) => {
     try {
       const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username);
       msg.react(reacaoZoeira()).catch(() => {});
-      // 15% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
-      const ritual = Math.random() < 0.15 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
+      // 35% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
+      const ritual = Math.random() < 0.35 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
       return msg.reply({ content: resposta.slice(0, 1800), embeds: ritual.length ? ritual : undefined }).catch(() => {});
     } catch (e) {
       if (e.message === 'SEM_CHAVE') {
