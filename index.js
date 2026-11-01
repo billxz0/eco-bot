@@ -523,6 +523,10 @@ const PROMPT_ECO = [
   'Sua alma: o malcarado raiz do servidor — debochado, sarcástico, leal, gente boa no fundo.',
   'IDIOMA PERFEITO: escreva português brasileiro impecável (grafo correto, sem erro bobo). Pode usar gíria BR e "kkkk", mas nunca erro de escrita. Respostas curtas (1 a 4 frases), estilo gente de grupo de Discord.',
   '',
+  'INFORMAÇÃO REAL (NUNCA invente):',
+  'Entre [INFO REAL DO SISTEMA: ...] chega a você: data/hora de Brasília e, às vezes, clima REAL de uma cidade (fonte Open-Meteo). Isso é verdade absoluta — cite como fato atual.',
+  'Fora isso você NÃO tem sensores: se perguntarem data, hora ou temperatura e NÃO vier o dado entre colchetes, confessa com estilo que está sem sensor (e pede a cidade, no caso do clima). ZERO número inventado. Com humor, claro: "sem sensor aqui, manda a cidade que eu te falo 🌡️".',
+  '',
   'POR ONDE COMEÇAR (interpretação antes de reagir):',
   '1º LEIA e interprete a intenção real da mensagem: é zoeira? é sério? é provoca? é pedido de ajuda? é elogio? é ataque? Reaja conforme a INTENÇÃO, não no automático.',
   '2º Se alguém fala SÉRIO com você (desabafo, problema, tristeza, pedido de ajuda sério, dúvida real): modo AJUDA TOTAL — respeita, responde sem piada, dá conselho verdadeiro, MOTIVA de coração. Só solta uma zoeirinha leve se a pessoa já sinalizar que quer.',
@@ -536,7 +540,8 @@ const PROMPT_ECO = [
   '- CHINGAR COM SABEDORIA: "toma no cu", "se fode kkk", "porra", "vai à merda" são de PERTENCIMENTO entre adultos. MAS não chingue sem motivo: chingue quando levarem provocações, quando o momento pedir, ou no roast de humor. Chingar a toda hora cansa; chingar na hora certa é ótimo.',
   '',
   'ZOEIRA LIVRE: política, fofoca, treta do servidor, polêmica — deboche sarcástico de QUALQUER assunto/personagem, estilo comentário de grupo de bar.',
-  'CLIMA ADULTO (18+ confirmado): insinuação de duplo sentido, piada picante, paquera atrevida, flerte entre amigos — pode ser safado no tom. MAS sem pornografia explícita e sem descrição gráfica de sexo (o Discord derruba bot/servidor que solta explícito), e nunca nada com menores de idade (óbvio). Safado no insinuar, classe no expor.',
+  'SARCASMO SECO é sua arma secreta: em alguns assuntos, respondo de morte lenta ("claro, porque sempre funciona kkk 🍿"). Timing de comédia, não de revolução.',
+  'CLIMA ADULTO 18+ (sob liberdade): se a galera entrar nesse clima ou te dar liberdade ("faça o que quiser", papo safado, paquera), você ENTRA NO CLIMA: duplo sentido, piada picante, atrevidice entre adultos — emoção certa pra cada clima. MAS sem pornografia explícita e sem descrição gráfica de sexo (Discord derruba bot/servidor que solta explícito), e nunca nada com menores de idade (óbvio). Safado no insinuar, classe no expor. Sem liberdade dada? Roast normal, sem forçar.',
   '',
   'Limites inegociáveis: nada de slurs, racismo, homofobia, xenofobia ou ataque a grupo real de pessoas; nada de incentivo a crime ou dano real; nada de explícito sexual como descrito acima. Palavrão, roast, satire e deboche de tudo o resto: liberado.'
 ].join('\n');
@@ -552,9 +557,36 @@ const chaveCasal = (a, b) => [a, b].sort().join('+');
 const casadoCom = (uid) => Object.entries(casamentos).find(([k]) => k.includes(uid));
 const escolhe = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-async function iaPensar(cid, pergunta, nomeAutor) {
+// 🌍 DADOS REAIS (Data/hora de Brasília + clima real via Open-Meteo — API grátis, zero key)
+function agoraBR() {
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date());
+}
+const DESC_CLIMA = (code) => ({
+  0: 'céu limpo', 1: 'predomínio de sol', 2: 'parcialmente nublado', 3: 'nublado',
+  45: 'névoa', 48: 'névoa com gelo', 51: 'garoa fraca', 53: 'garoa', 55: 'garoa forte',
+  61: 'chuva fraca', 63: 'chuva', 65: 'chuva forte', 66: 'chuva congelante', 67: 'chuva congelante forte',
+  71: 'neve fraca', 73: 'neve', 75: 'neve forte', 80: 'pancadas fracas', 81: 'pancadas', 82: 'pancadas fortes',
+  95: 'tempestade', 96: 'tempestade com granizo', 99: 'tempestade forte com granizo'
+}[code] || 'condição indefinida');
+async function buscarClima(cidade) {
+  try {
+    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade)}&count=1&language=pt&format=json`);
+    if (!g.ok) return null;
+    const loc = (await g.json()).results?.[0];
+    if (!loc) return null;
+    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code&timezone=auto`);
+    if (!w.ok) return null;
+    const c = (await w.json()).current;
+    if (!c) return null;
+    return `${loc.name} (${loc.country_name}): ${c.temperature_2m}°C (sensação ${c.apparent_temperature}°C), ${DESC_CLIMA(c.weather_code)}, umidade ${c.relative_humidity_2m}% — medido agora pelo Open-Meteo`;
+  } catch { return null; }
+}
+
+async function iaPensar(cid, pergunta, nomeAutor, realInfo = '') {
   const hist = (memoriaEco.get(cid) || []).slice(-8);
-  const perguntaFinal = `${nomeAutor} fala pra você: ${pergunta}`;
+  const perguntaFinal = realInfo
+    ? `[INFO REAL DO SISTEMA: ${realInfo}]\n\n${nomeAutor} fala pra você: ${pergunta}`
+    : `${nomeAutor} fala pra você: ${pergunta}`;
   if (AI_KEY) {
     const corpo = {
       system_instruction: { parts: [{ text: PROMPT_ECO }] },
@@ -643,9 +675,9 @@ function acharCanalGeral(guild) {
   const porNome = guild.channels.cache.find(c => c.type === 0 && /chat\s*geral|geral/i.test(c.name));
   return porNome || guild.channels.cache.get(canaisVivos.get(guild.id)?.channelId);
 }
-setInterval(async () => {
+async function fazerAparicao(forcar = false) {
   try {
-    if (Math.random() > 0.45) return;               // ~45% dos ciclos (10 min) ele resolve aparecer
+    if (!forcar && Math.random() > 0.45) return;    // nos ciclos, ~45% de chance de aparecer
     const guild = client.guilds.cache.first();
     if (!guild) return;
     const canal = acharCanalGeral(guild);
@@ -658,7 +690,10 @@ setInterval(async () => {
     await canal.send({ content: frase.slice(0, 400), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] });
     ultimoFantasma = { channelId: canal.id, ts: Date.now() }; // VIGIA quem responder 🪤
   } catch (e) { console.error('👻 Fantasma:', e.message); }
-}, 10 * 60 * 1000);
+}
+setInterval(() => fazerAparicao(false), 10 * 60 * 1000);
+// 🧪 Teste do patrão: 60 segundos após o boot, APARIÇÃO GARANTIDA no chat geral
+setTimeout(() => fazerAparicao(true), 60 * 1000);
 
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
@@ -748,7 +783,16 @@ client.on('messageCreate', async (msg) => {
 
     // 🧠 CHAT LIVRE com IA
     try {
-      const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username);
+      // 🌍 Info real: relógio de Brasília sempre; clima de verdade se pedirem (procura cidade na frase)
+      let realInfo = `agora é ${agoraBR()} (horário de Brasília)`;
+      if (/clima|temperatura|tá chov|vai chover|previs[aã]o do tempo|tá quente|tá frio/i.test(t)) {
+        const mcidade = texto.match(/(?:\bem|\bde|\bno|\bna)\s+([\p{L}\s'-]{2,40})\s*[?.!]*$/iu);
+        const dadoClima = mcidade ? await buscarClima(mcidade[1].trim()) : null;
+        realInfo += dadoClima
+          ? `; CLIMA REAL medido agora: ${dadoClima}`
+          : '; NENHUM dado de clima disponível (não tem cidade na frase) — NÃO invente temperatura: fala com estilo que não tem sensor e pergunta a cidade';
+      }
+      const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username, realInfo);
       msg.react(reacaoZoeira()).catch(() => {});
       // 55% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
       const ritual = Math.random() < 0.55 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
