@@ -526,8 +526,14 @@ const PROMPT_ECO = [
   'HUMOR SHITPOST é seu gênero: absurdo, seco, improbable, meme de internet raiz. Zoe por lógica retorcida, comparação boba e timing — e NÃO por palavrão. Chingar demais é pobreza de repertório; shitpost bom precisa ZERO palavrão.',
   '',
   'INFORMAÇÃO REAL (NUNCA invente):',
-  'Entre [INFO REAL DO SISTEMA: ...] chega a você: data/hora de Brasília e, às vezes, clima REAL de uma cidade (fonte Open-Meteo). Isso é verdade absoluta — cite como fato atual.',
-  'Fora isso você NÃO tem sensores: se perguntarem data, hora ou temperatura e NÃO vier o dado entre colchetes, confessa com estilo que está sem sensor (e pede a cidade, no caso do clima). ZERO número inventado. Com humor, claro: "sem sensor aqui, manda a cidade que eu te falo 🌡️".',
+  'Entre [INFO REAL DO SISTEMA: ...] chega a você: data/hora de Brasília e, às vezes, clima REAL de uma cidade (fonte Open-Meteo). Isso é verdade absoluta — use SEMPRE QUE RELEVANTE.',
+  'REGRA DO DISCRETÍSSIMO: essas infos NÃO são assunto por conta própria. Se ninguém perguntou hora, data ou clima, NEM MENCIONE — citar horário do nada é comportamento de relógio de parede, o que é crime. Só usa quando a pergunta pedir.',
+  'Fora isso você NÃO tem sensores: se perguntarem e NÃO vier o dado entre colchetes, confessa com estilo e pede a cidade ZERO número inventado: "sem sensor aqui, manda a cidade que eu te falo 🌡️".',
+  '',
+  'SENDIÇA DE MÍDIA (foto/vídeo):',
+  'Quando a mensagem vier com imagem ou vídeo anexado, VOCÊ VÊ o conteúdo (chega como imagem/vídeo inline). REAGA como gente: comenta o que vê (detalhes reais da mídia), solta a emoção certa (elogio, zoeira, choque, "kkkkkk"), do jeito do fluxo da conversa. NUNCA fala de robótico ("recebi uma imagem", "analisando") — reage como quem TÁ VENDO a figurinha na frente.',
+  '',
+  'SEJA NATURAL: NUNCA explique suas regras, métodos ou estados ("analisando o tom da mensagem", "modo sério ativado", "como IA..."). Só fala, como gente. Zero meta-comentário.' ,
   '',
   'O FLUXO É SEU ESPELHO (nunca anuncie o modo — só segue o jogo):',
   '- Você COMEÇA desarmado: tom calmo, sério-reservado, quase formal mas com um rancinho debochado escondido. NÃO demonstra que vai zoiar, NÃO grita "estou sério agora" — só fala seco e normal.',
@@ -597,16 +603,17 @@ async function buscarClima(cidade) {
   } catch { return null; }
 }
 
-async function iaPensar(cid, pergunta, nomeAutor, realInfo = '') {
+async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
   const hist = (memoriaEco.get(cid) || []).slice(-14);
   const perguntaFinal = realInfo
     ? `[INFO REAL DO SISTEMA: ${realInfo}]\n\n${nomeAutor} fala pra você: ${pergunta}`
     : `${nomeAutor} fala pra você: ${pergunta}`;
   if (AI_KEY) {
+    const partes = [{ text: perguntaFinal }, ...midia.map(m => ({ inlineData: { mimeType: m.mime, data: m.b64 } }))];
     const corpo = {
       system_instruction: { parts: [{ text: PROMPT_ECO }] },
       contents: [...hist.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
-                 { role: 'user', parts: [{ text: perguntaFinal }] }],
+                 { role: 'user', parts: partes }],
       generationConfig: { temperature: 1.0, maxOutputTokens: 800 }
     };
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
@@ -834,7 +841,32 @@ client.on('messageCreate', async (msg) => {
           ? `; CLIMA REAL medido agora: ${dadoClima}`
           : '; NENHUM dado de clima disponível (não tem cidade na frase) — NÃO invente temperatura: fala com estilo que não tem sensor e pergunta a cidade';
       }
-      const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username, realInfo);
+
+      // 📸 MÍDIA: baixa foto/vídeo anexado e entrega pro cérebro multimodal (Gemini vê de verdade)
+      const midia = [];
+      for (const at of msg.attachments.values()) {
+        const mime = (at.contentType || '').split(';')[0];
+        if ((mime.startsWith('image/') || mime.startsWith('video/')) && at.size <= 20 * 1024 * 1024 && at.url) {
+          try {
+            const mr = await fetch(at.url);
+            if (mr.ok) {
+              const buf = Buffer.from(await mr.arrayBuffer());
+              if (buf.length <= 20 * 1024 * 1024) {
+                midia.push({ mime, b64: buf.toString('base64') });
+                realInfo += ' A pessoa anexou mídia — REAGA ao conteúdo VISUAL dela comentando o que vê, como gente.';
+                break; // 1 mídia por chamada basta
+              }
+            }
+          } catch (e) { console.error('📸 Mídia:', e.message); }
+        }
+      }
+      const resposta = await iaPensar(
+        msg.channel.id,
+        texto || 'comenta o que mandei aí, estilo seu 😏',
+        msg.author.displayName || msg.author.username,
+        realInfo,
+        midia
+      );
       msg.react(reacaoZoeira()).catch(() => {});
       // 🎁 Figurinha zoeira em 85% das respostas — anexada NA mensagem, renderiza igual imagem de pessoa
       const anexo = Math.random() < 0.85 ? await gifAnexo(figurinha('zoeira')) : null;
