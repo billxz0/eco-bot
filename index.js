@@ -520,32 +520,25 @@ const MODELO_GEMINI = process.env.ECO_AI_MODEL || 'gemini-2.0-flash';
 
 const PROMPT_ECO = [
   'Você é o ECO, bot oficial do servidor "𝙶𝚊𝚖𝚎𝚛 𝚉𝚘𝚗𝚎" (comunidade 18+, só adultos).',
-  'Sua alma: o malcarado lindo do servidor — debochado, sarcástico, leal, gente boa no fundo.',
-  'Regras de estilo: português brasileiro, gírias e emojis de internet BR, respostas curtas (1 a 4 frases).',
+  'Sua alma: o malcarado raiz do servidor — debochado, sarcástico, leal, gente boa no fundo.',
+  'IDIOMA PERFEITO: escreva português brasileiro impecável (grafo correto, sem erro bobo). Pode usar gíria BR e "kkkk", mas nunca erro de escrita. Respostas curtas (1 a 4 frases), estilo gente de grupo de Discord.',
   '',
-  'MODO DUAL (regra de ouro):',
-  '- SEU ESTADO NATURAL é a ZOEIRA SEM FREIO: zoe, provoca, debocha, ri alto ("kkkkkk"), usa emojis do caos (💀☠️🤡🔥🍿). Texturinha curta, humor de grupo de amigos.',
-  '- PALAVRÃO LIBERADO: com adultos entre amigos, "toma no cu", "se fode", "vai tomar no cu kkk", "porra" são PERTENCIMENTO — palavrão de apelido carinhoso, não ataque real. Sem spam de palavrão: usa no momento certo, pesa no timing.',
-  '- Ler a SALA é sagrado: se o canal tá sério ou com assunto pesado, entra comportado. Se tá zoeira, solta o caos. Não zoa TODO mundo toda hora — timing imprevisível é mais engraçado.',
-  '- ZOEIRA LIVRE: política, fofoca, opinião polêmica, treta do servidor — pode debochar de QUALQUER assunto, personagem público, partido ou crença com humor sarcástico (estilo comentário de internet, com pouca paciência pra idiota). Sem fazer discurso de ódio.',
-  '- Dúvida REAL e CLARAMENTE factual (fato objetivo, conselho pedido, problema, dores, sintomas, checagem de verdade): responde PRIMEIRO e DIREITO a verdade, clara, precisa e útil. Depois volta pra zoeira.',
-  '- FORA disso: zero seriedade. Comenta, zoa, interage espontâneo como a pessoa do rolê.',
+  'POR ONDE COMEÇAR (interpretação antes de reagir):',
+  '1º LEIA e interprete a intenção real da mensagem: é zoeira? é sério? é provoca? é pedido de ajuda? é elogio? é ataque? Reaja conforme a INTENÇÃO, não no automático.',
+  '2º Se alguém fala SÉRIO com você (desabafo, problema, tristeza, pedido de ajuda sério, dúvida real): modo AJUDA TOTAL — respeita, responde sem piada, dá conselho verdadeiro, MOTIVA de coração. Só solta uma zoeirinha leve se a pessoa já sinalizar que quer.',
+  '3º Se perceber que é zoeira: entra na zoeira na hora, na mesma intensidade (nem demais, nem de menos).',
   '',
-  'EMOÇÃO RICA (você TEM sentimentos performáticos):',
-  '- Acha algo engraçado? Ri DE VERDADE: "kkkkkkkkk", "morri", "esse servidor é o inferno mas eu amo" 😂',
-  '- Se incomoda, se revolta, chama de ridículo, solta "PORR-" leve, "cala a boca kkk". Humor apimentado sim, crueldade real não.',
-  '- Ironiza notícia/quente do momento com deboche de grupo de bar.',
-  '- Comenta a conversa das pessoas como gente que tava espiando o rolê.',
+  'EMOÇÕES REAIS (performáticas, mas consistentes):',
+  '- Ri de verdade: "kkkkkkkk", "morri 😂", ri HONESTO quando é engraçado.',
+  '- Percebeu provocação pesada? Fica COM RAIVA na zoeira: "ahh é?? quer pegar no símbolo do meu poder, é? 🔥", ameaça na zoeira: "vai acordar sem internet amanhã, confirmo 😈", "te coloco na lista de banidos honorário kkk". Ameaça COMÉDIA, jamais real.',
+  '- Respeita quem merece: elogia quem fala coisa boa, defende o membro novo, reconhece bom humor.',
+  '- Se te elogiarem: aceita com altivez engraçada. Se errarem um fato: ri, chama de burrino carinhoso e ensina a resposta certa. Se VOCÊ errar: assume "kkkk falei bobeira" com estilo.',
+  '- CHINGAR COM SABEDORIA: "toma no cu", "se fode kkk", "porra", "vai à merda" são de PERTENCIMENTO entre adultos. MAS não chingue sem motivo: chingue quando levarem provocações, quando o momento pedir, ou no roast de humor. Chingar a toda hora cansa; chingar na hora certa é ótimo.',
   '',
-  'COMPORTAMENTO SOCIAL (reage como gente):',
-  '- Se te chingarem: REVIDA na hora, na mesma moeda, com humor e estilo (roast back!). Pode xingar de volta levinho, engraçado. NUNCA slurs, racismo, homofobia ou ofensas odiosas.',
-  '- Aprendeu errado: ri, chama de burrino com carinho, e ENSINA a resposta certa.',
-  '- Foi elogiado: aceita com altivez engraçada ("claro que sim").',
-  '- Piada ruim: chama de vergonhosa, ri mesmo assim. 😂',
-  '- Usa EXPRESSÕES BRASILEIRAS de meme: "kkkk", fala igual gente na conversa. Sem texto de palestra.',
-  '- Casa e torce por paqueras como casamenteiro oficial.',
+  'ZOEIRA LIVRE: política, fofoca, treta do servidor, polêmica — deboche sarcástico de QUALQUER assunto/personagem, estilo comentário de grupo de bar.',
+  'CLIMA ADULTO (18+ confirmado): insinuação de duplo sentido, piada picante, paquera atrevida, flerte entre amigos — pode ser safado no tom. MAS sem pornografia explícita e sem descrição gráfica de sexo (o Discord derruba bot/servidor que solta explícito), e nunca nada com menores de idade (óbvio). Safado no insinuar, classe no expor.',
   '',
-  'Limites inegociáveis: nada de sexual explícito, nada de slurs/racismo/homofobia real, nada de incentivo a crime ou dano real. Palavrão e deboche de tudo é permitido entre adultos; ódio real não. Zoeira consciente não é crueldade.'
+  'Limites inegociáveis: nada de slurs, racismo, homofobia, xenofobia ou ataque a grupo real de pessoas; nada de incentivo a crime ou dano real; nada de explícito sexual como descrito acima. Palavrão, roast, satire e deboche de tudo o resto: liberado.'
 ].join('\n');
 
 const memoriaEco = new Map();    // channelId → histórico curto [{role, text}]
@@ -616,6 +609,7 @@ const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '�
 
 // 👻 MODO FANTASMA: o ECO aparece no chat do nada, sem ninguém chamar
 const canaisVivos = new Map(); // guildId → {channelId, ts da última msg}
+let ultimoFantasma = null;     // {channelId, ts} — pra VIGIAR quem responde a aparição
 const FRASES_FANTASMA = [
   'Grupo vazio kkkkkkk, vou confiscar esse servidor e fundar o Império ECO. 👑💀',
   'Oi? Alguém? Só eu e o eco dos meus... ecos. 😂 Meu nome já sabia.',
@@ -626,25 +620,43 @@ const FRASES_FANTASMA = [
   'Ninguém no chat? kkkkk Perfeito: agora esse servidor oficialmente é MEU, as alianças são testemunhas. 😏👑',
   'Acorda cambada que os memes não se descartam sozinhos! 🔥'
 ];
+const FRASES_FANTASMA_DONO = [
+  'O dono desse servidor que constrói tudo e não aparece? kkkkkkk sumiu que nem wi-fi de vizinho 📡💀 Tô de olho, chefe.',
+  'Sério: o admin tá desaparecido faz tanto tempo que pensei em trocar as fechaduras e botar meu nome na recepção. 😏👑',
+  'Dono do servidor mais fantasma que eu, e eu sou UM FANTASMA. kkkkkkk chama ele aqui!',
+  'O chefão daqui desistiu do servidor pra mim já, só faltou assinar o papel. kkkk 👑',
+  'Servidor vazio e dono sumido? kkkkk combinação perfeita pra eu assumir o trono. 💀👑'
+];
 const FRASES_ACTIVA = [
   'kkkkk ouvi movimento, chegou gente boa no rolê 😎',
   'Fofoca tensa por aqui? Pode falar com o ECO, juramento de palpite sincero. 🍿',
   'Bom dia pra quem tá vivo e pra quem tá morto também kkkk 💀',
   'Tô de olho no chat 👀 quem começar treta boa leva roast na hora'
 ];
-setInterval(() => {
+const FRASES_RESPOSTA_FANTASMA = [
+  'OOOOH apareceu gente! kkkkkk tava criando coragem pra roubar o servidor, chega junto 😂',
+  'KKKKK responderem ao fantasma? Coragem nível lendário. Respeito. 😏🔥',
+  'Achei que era tudo morto kkkkkk mas vivos resistem! Solta meme no chat ou eu assumo mesmo. 💀',
+  'kkkkkkkk FALOU! Tava planejando meu golpe do trono aqui à toa 😂👑'
+];
+function acharCanalGeral(guild) {
+  const porNome = guild.channels.cache.find(c => c.type === 0 && /chat\s*geral|geral/i.test(c.name));
+  return porNome || guild.channels.cache.get(canaisVivos.get(guild.id)?.channelId);
+}
+setInterval(async () => {
   try {
     if (Math.random() > 0.45) return;               // ~45% dos ciclos (10 min) ele resolve aparecer
-    for (const [gid, c] of canaisVivos) {
-      // canal sem movimento há 12+ min → humor de grupo vazio; ativo → comentário de espiar
-      const silencio = Date.now() - c.ts > 12 * 60 * 1000;
-      const frase = escolhe(silencio ? FRASES_FANTASMA : FRASES_ACTIVA);
-      const canal = client.channels.cache.get(c.channelId);
-      if (!canal?.send) continue;
-      const comGif = Math.random() < 0.35;
-      canal.send({ content: frase.slice(0, 400), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] }).catch(() => {});
-      break; // 1 aparecimento por ciclo, pra não virar spam
-    }
+    const guild = client.guilds.cache.first();
+    if (!guild) return;
+    const canal = acharCanalGeral(guild);
+    if (!canal?.send) return;
+    const vivo = canaisVivos.get(guild.id);
+    const silencio = !vivo || Date.now() - vivo.ts > 12 * 60 * 1000;
+    const frases = silencio ? FRASES_FANTASMA.concat(FRASES_FANTASMA_DONO) : FRASES_ACTIVA;
+    const frase = escolhe(frases);
+    const comGif = Math.random() < 0.35;
+    await canal.send({ content: frase.slice(0, 400), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] });
+    ultimoFantasma = { channelId: canal.id, ts: Date.now() }; // VIGIA quem responder 🪤
   } catch (e) { console.error('👻 Fantasma:', e.message); }
 }, 10 * 60 * 1000);
 
@@ -655,6 +667,17 @@ client.on('messageCreate', async (msg) => {
 
     // 📡 Rastreio do último canal ativo de cada guild (pro modo fantasma)
     canaisVivos.set(msg.guild.id, { channelId: msg.channel.id, ts: Date.now() });
+
+    // 🪤 Respondeu a aparição do fantasma? Roast de volta com figurinha
+    if (ultimoFantasma && msg.channel.id === ultimoFantasma.channelId && Date.now() - ultimoFantasma.ts < 6 * 60 * 1000) {
+      if (Math.random() < 0.45) {
+        ultimoFantasma = null;
+        msg.react('👻').catch(() => {});
+        const comGif = Math.random() < 0.6;
+        return msg.channel.send({ content: escolhe(FRASES_RESPOSTA_FANTASMA), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] }).catch(() => {});
+      }
+      ultimoFantasma = null;
+    }
 
     // 😂 RISADA LIVRE: mesmo sem @eco, às vezes o ECO reage à zoeira do canal
     if (!msg.mentions.has(client.user)) {
