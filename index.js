@@ -513,10 +513,9 @@ client.on('messageDelete', (msg) => {
 // Chaves opcionais no Render (Environment):
 //   GEMINI_API_KEY → IA grátis (aistudio.google.com/apikey — 30 segundos, zero cartão)
 //   GROQ_API_KEY   → alternativa grátis (console.groq.com)
-//   TENOR_API_KEY  → figurinhas animadas grátis (developers.google.com/tenor)
+//   ECO_AI_MODEL   → modelo da IA (default: gemini-3.5-flash-lite)
 const AI_KEY    = (process.env.GEMINI_API_KEY || '').trim();
 const GROQ_KEY  = (process.env.GROQ_API_KEY || '').trim();
-const TENOR_KEY = (process.env.TENOR_API_KEY || '').trim();
 const MODELO_GEMINI = process.env.ECO_AI_MODEL || 'gemini-2.0-flash';
 
 const PROMPT_ECO = [
@@ -584,16 +583,16 @@ async function iaPensar(cid, pergunta, nomeAutor) {
   throw new Error('SEM_CHAVE');
 }
 
-// Figurinhas dinâmicas (Tenor) — se não houver chave, só emojis
-async function buscarGif(termo) {
-  if (!TENOR_KEY) return null;
-  try {
-    const r = await fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(termo)}&key=${TENOR_KEY}&limit=8&random=true&locale=pt_BR&contentfilter=medium`);
-    if (!r.ok) return null;
-    const d = await r.json();
-    const g = d.results?.[Math.floor(Math.random() * (d.results?.length || 1))];
-    return g?.media_formats?.gif?.url || null;
-  } catch { return null; }
+// ═══════════ Catálogo de figurinhas (Giphy — links testados e aprovados HTTP 200 em 31/10/2026) ═══════════
+const GIF_CATALOGO = {
+  beijo:     ['TLfgIRwAiWOc', 'R22gdcPiOLaE', 'S1p1LWtFmdoMQzEpvt', 'A75Y6NodD38I', 'XZYxeRlIEdmKI', 'WoZNpAKw8w'],
+  casamento: ['xCLYsG9lDh', 'F1toyd7E9BzmyIBF9', 'KXazzi6LHtzGxbP0zC', 'JQXYyJ7SgBU0JLqlPF', 'AcSkEbKYkhGYB', 'MLMG11lBUqzXmRnoz'],
+  choro:     ['1zo8SUSaUU', 'Ul8fuIG75QWs', 'LchnIDxzT86KQ9eI', 'dhWs5o3yb6', 'UBdDA5FFFITOU', 'RBdwNQim7Y6HK'],
+  zoeira:    ['LBb735fuQwRKAVzN23', 'BG7UnBi7QtePFHEnk', 'IgHaSPN6hzejlI', 'D1QQCbrl548I31Qww', 'WykUqckDqi95YIqtFZ', 'P3jXjcDaTSKA']
+};
+function figurinha(cat) {
+  const lista = GIF_CATALOGO[cat] || GIF_CATALOGO.zoeira;
+  return `https://media.giphy.com/media/${escolhe(lista)}/giphy.gif`;
 }
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅']);
 
@@ -632,7 +631,7 @@ client.on('messageCreate', async (msg) => {
       casamentos[chave] = { em: new Date().toISOString(), por: msg.author.id };
       salvarCasamentos();
       msg.react('💍').catch(() => {});
-      const gif = await buscarGif('casamento anime wedding');
+      const gif = figurinha('casamento');
       return msg.reply({
         content: `💍 CASAMENTO CONFIRMADO NO CARTÓRIO DO GAMER ZONE!\n${autorTxt} + ${alvoTxt}\nQue os presentes sejam memes e o amor dure até o próximo deploy. 😂`.slice(0, 1800),
         embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : []
@@ -647,14 +646,14 @@ client.on('messageCreate', async (msg) => {
       delete casamentos[meu[0]];
       salvarCasamentos();
       msg.react('💔').catch(() => {});
-      const gif = await buscarGif('anime crying sad');
+      const gif = figurinha('choro');
       return msg.reply({ content: `💔 DIVÓRCIO OFICIAL: ${autorTxt} liberou <@${outro}> para o mercado da zoeira.\nTaxa administrativa: 1 figurinha de tristeza.`.slice(0, 1800), embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : [] }).catch(() => {});
     }
 
     // 😘 BEIJO
     if (/beij[oa]|selinho|beijinho/.test(t)) {
       msg.react('😘').catch(() => {});
-      const gif = await buscarGif('anime kiss');
+      const gif = figurinha('beijo');
       if (alvo) {
         return msg.reply({ content: `😘💋 ${autorTxt} plantou um beijo na bochecha de ${alvoTxt} — o servidor aplaudiu em pé. ${reacaoZoeira()}`.slice(0, 1800), embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : [] }).catch(() => {});
       }
@@ -665,7 +664,9 @@ client.on('messageCreate', async (msg) => {
     try {
       const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username);
       msg.react(reacaoZoeira()).catch(() => {});
-      return msg.reply(resposta.slice(0, 1800)).catch(() => {});
+      // 15% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
+      const ritual = Math.random() < 0.15 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
+      return msg.reply({ content: resposta.slice(0, 1800), embeds: ritual.length ? ritual : undefined }).catch(() => {});
     } catch (e) {
       if (e.message === 'SEM_CHAVE') {
         return msg.reply(`🧠 Meu cérebro grátis ainda não foi plugado, ${autorTxt}!\nColoca uma **GEMINI_API_KEY** grátis no Render → Environment (aqui: aistudio.google.com/apikey) e eu viro o Bill Gates dos memes. 🤖💰`).catch(() => {});
