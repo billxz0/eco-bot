@@ -690,8 +690,8 @@ async function fazerAparicao(forcar = false) {
     const silencio = !vivo || Date.now() - vivo.ts > 12 * 60 * 1000;
     const frases = silencio ? FRASES_FANTASMA.concat(FRASES_FANTASMA_DONO) : FRASES_ACTIVA;
     const frase = escolhe(frases);
-    const fraseFinal = `${frase}\n${figurinha('zoeira')}`.slice(0, 400);
-    await canal.send(fraseFinal);
+    await canal.send(frase.slice(0, 400));
+    if (Math.random() < 0.35) await canal.send(figurinha('zoeira')); // GIF sozinho = imagem inline limpa
     ultimoFantasma = { channelId: canal.id, ts: Date.now() }; // VIGIA quem responder 🪤
   } catch (e) { console.error('👻 Fantasma:', e.message); }
 }
@@ -712,7 +712,8 @@ client.on('messageCreate', async (msg) => {
       if (Math.random() < 0.45) {
         ultimoFantasma = null;
         msg.react('👻').catch(() => {});
-        return msg.channel.send(`${escolhe(FRASES_RESPOSTA_FANTASMA)}\n${figurinha('zoeira')}`.slice(0, 400)).catch(() => {});
+        msg.channel.send(escolhe(FRASES_RESPOSTA_FANTASMA)).catch(() => {});
+        return msg.channel.send(figurinha('zoeira')).catch(() => {});
       }
       ultimoFantasma = null;
     }
@@ -756,7 +757,9 @@ client.on('messageCreate', async (msg) => {
       salvarCasamentos();
       msg.react('💍').catch(() => {});
       const gif = figurinha('casamento');
-      return msg.reply(`💍 CASAMENTO CONFIRMADO NO CARTÓRIO DO GAMER ZONE!\n${autorTxt} + ${alvoTxt}\nQue os presentes sejam memes e o amor dure até o próximo deploy. 😂${gif ? `\n${gif}` : ''}`.slice(0, 1800)).catch(() => {});
+      msg.reply(`💍 CASAMENTO CONFIRMADO NO CARTÓRIO DO GAMER ZONE!\n${autorTxt} + ${alvoTxt}\nQue os presentes sejam memes e o amor dure até o próximo deploy. 😂`.slice(0, 1800)).catch(() => {});
+      if (gif) msg.channel.send(gif).catch(() => {}); // GIF sozinho numa mensagem = Discord renderiza imagem limpa
+      return;
     }
 
     // 💔 DIVÓRCIO
@@ -768,7 +771,9 @@ client.on('messageCreate', async (msg) => {
       salvarCasamentos();
       msg.react('💔').catch(() => {});
       const gif = figurinha('choro');
-      return msg.reply(`💔 DIVÓRCIO OFICIAL: ${autorTxt} liberou <@${outro}> de volta no mercado da zoeira.\nTaxa administrativa: 1 figurinha de tristeza. 😭${gif ? `\n${gif}` : ''}`.slice(0, 1800)).catch(() => {});
+      msg.reply(`💔 DIVÓRCIO OFICIAL: ${autorTxt} liberou <@${outro}> de volta no mercado da zoeira.\nTaxa administrativa: 1 figurinha de tristeza. 😭`.slice(0, 1800)).catch(() => {});
+      if (gif) msg.channel.send(gif).catch(() => {});
+      return;
     }
 
     // 😘 BEIJO
@@ -776,7 +781,9 @@ client.on('messageCreate', async (msg) => {
       msg.react('😘').catch(() => {});
       const gif = figurinha('beijo');
       if (alvo) {
-        return msg.reply(`😘💋 ${autorTxt} plantou um beijo na bochecha de ${alvoTxt} — o servidor aplaudiu em pé. ${reacaoZoeira()}${gif ? `\n${gif}` : ''}`.slice(0, 1800)).catch(() => {});
+        msg.reply(`😘💋 ${autorTxt} plantou um beijo na bochecha de ${alvoTxt} — o servidor aplaudiu em pé. ${reacaoZoeira()}`.slice(0, 1800)).catch(() => {});
+        if (gif) msg.channel.send(gif).catch(() => {});
+        return;
       }
       return msg.reply(`😘💋 Beijo recebido e devolvido em dobro, ${autorTxt}! Cuidado que eu escorrego pra aliança direto. ${reacaoZoeira()}`).catch(() => {});
     }
@@ -794,9 +801,9 @@ client.on('messageCreate', async (msg) => {
       }
       const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username, realInfo);
       msg.react(reacaoZoeira()).catch(() => {});
-      // 🎁 Figurinha zoeira em 85% das respostas — direto no texto, sem caixinha roxa
-      const gifZoeira = Math.random() < 0.85 ? figurinha('zoeira') : null;
-      return msg.reply(`${resposta}${gifZoeira ? `\n${gifZoeira}` : ''}`.slice(0, 1800)).catch(() => {});
+      // 🎁 Figurinha zoeira em 85% das respostas — manga separada, renderiza como imagem inline
+      if (Math.random() < 0.85) msg.channel.send(figurinha('zoeira')).catch(() => {});
+      return msg.reply(resposta.slice(0, 1800)).catch(() => {});
     } catch (e) {
       if (e.message === 'SEM_CHAVE') {
         return msg.reply(`🧠 Meu cérebro grátis ainda não foi plugado, ${autorTxt}!\nColoca uma **GEMINI_API_KEY** grátis no Render → Environment (aqui: aistudio.google.com/apikey) e eu viro o Bill Gates dos memes. 🤖💰`).catch(() => {});
