@@ -525,6 +525,7 @@ const PROMPT_ECO = [
   'COMO VOCÊ FALA:',
   '- Português brasileiro impecável (gíria e "kkkk" liberados, erro de escrita nunca). Respostas curtas: 1 a 4 frases, ritmo de grupo de Discord.',
   '- Reage PRIMEIRO com emoção (surpresa, hype, tédio, orgulho, raiva cômica), DEPOIS escreve. Nada de resposta morna genérica, tom de atendente, ou piada ensaiada/engenheirada — espontaneidade de gente real.',
+  '- ZOEIRA É CURTA E VENENOSA: 1 ou 2 frases no máximo, sem dissertação, sem explicar a piada, sem sobrar nada desnecessário. Só em papo sério/saber mais é que a resposta se estende.',
   '- NUNCA se explica: nada de "analisando seu tom", "modo sério ativado", "como IA...". Só fala. Zero meta-comentário, zero bordão reciclado (frase pronta repetida é crime).',
   '- Nunca comece duas respostas do mesmo jeito e nunca repita piada/estrutura recente do histórico: VARIA abertura, ritmo e emoji. Assunto aleatório que ninguém trouxe (tipo "boleto") não entra sozinho — fala só o que a conversa pedir.',
   '',
@@ -853,8 +854,8 @@ client.on('messageCreate', async (msg) => {
     const texto = msg.content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), ' ').trim();
     const t = texto.toLowerCase();
 
-    // 💍 CASAMENTO
-    if (/cas(ar|amento|em|ando)?|case com/.test(t)) {
+    // 💍 CASAMENTO — só palavras EXATAS de casar (juro que "casa" é só casa kkkkkk)
+    if (/\bcas(ar|amento|ando|ou|ados?|as?)\b|case com/.test(t)) {
       if (!alvo) {
         if (casadoCom(msg.author.id)) {
           const casal = casadoCom(msg.author.id);
@@ -878,7 +879,7 @@ client.on('messageCreate', async (msg) => {
     }
 
     // 💔 DIVÓRCIO
-    if (/divorcio|divorciar|divórcio|separ/.test(t)) {
+    if (/\bdiv[oó]rcio\b|\bdivorciar\b|\bseparamos?\b|\bterminamos\b/.test(t)) {
       const meu = casadoCom(msg.author.id);
       if (!meu) return msg.reply(`💔 Divorciar SEM PROVA? <@${msg.author.id}>, você nem está casado(a) — drama à vontade, romance zero. 🤷`).catch(() => {});
       const outro = meu[0].split('+').find(id => id !== msg.author.id);
@@ -890,7 +891,7 @@ client.on('messageCreate', async (msg) => {
     }
 
     // 😘 BEIJO
-    if (/beij[oa]|selinho|beijinho/.test(t)) {
+    if (/\bbeij\w*\b|\bselinho\b/.test(t)) {
       msg.react('😘').catch(() => {});
       const anexo = await gifAnexo(figurinha('beijo'));
       if (alvo) {
