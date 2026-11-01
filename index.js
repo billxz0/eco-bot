@@ -509,6 +509,173 @@ client.on('messageDelete', (msg) => {
   if (canal) canal.send({ embeds: [new EmbedBuilder().setColor(PURPLE).setDescription(`🗑️ Mensagem de **${msg.author?.tag}** removida em ${msg.channel}:\n>>> ${msg.content?.slice(0, 400) || '(sem texto)'}${msg.attachments?.size ? '\n📎 ' + msg.attachments.size + ' anexo(s)' : ''}`).setTimestamp()] }).catch(() => {});
 });
 
+// ═══════════ IA DO ECO — zoeira ilimitada (grátis) ═══════════
+// Chaves opcionais no Render (Environment):
+//   GEMINI_API_KEY → IA grátis (aistudio.google.com/apikey — 30 segundos, zero cartão)
+//   GROQ_API_KEY   → alternativa grátis (console.groq.com)
+//   TENOR_API_KEY  → figurinhas animadas grátis (developers.google.com/tenor)
+const AI_KEY    = (process.env.GEMINI_API_KEY || '').trim();
+const GROQ_KEY  = (process.env.GROQ_API_KEY || '').trim();
+const TENOR_KEY = (process.env.TENOR_API_KEY || '').trim();
+const MODELO_GEMINI = process.env.ECO_AI_MODEL || 'gemini-2.0-flash';
+
+const PROMPT_ECO = [
+  'Você é o ECO, bot oficial do servidor "𝙶𝚊𝚖𝚎𝚛 𝚉𝚘𝚗𝚎" (comunidade 18+, só adultos).',
+  'Personalidade: o malcarado lindo do servidor — debochado, sarcástico, gente boa no fundo.',
+  'Regras de estilo:',
+  '- Responda SEMPRE em português brasileiro, com gírias e emojis de internet BR.',
+  '- Respostas CURTAS (1 a 4 frases). Direto na veia, sem enrolação.',
+  '- Zoa quem te chamar: apelidos carinhós, ironia, provocações leves. Nunca meia-palavra seca.',
+  '- Casamenteiro oficial: torce por paqueras, brinca de beijo e namoro, comenta os draminhas do servidor.',
+  '- Quando te chamarem pra conversar, entra na conversa como gente — sem robotizar.',
+  'Limites inegociáveis: nada de sexual explícito, nada de discurso de ódio ou slurs, nada de incentivo a crime ou dano real. Zoeira consciente não é crueldade.'
+].join('\n');
+
+const memoriaEco = new Map();    // channelId → histórico curto [{role, text}]
+const ecoCooldown = new Map();   // userId → timestamp do último @eco
+
+const CASAMENTOS_FILE = path.join(__dirname, 'eco-casamentos.json');
+let casamentos = {};
+try { casamentos = JSON.parse(fs.readFileSync(CASAMENTOS_FILE, 'utf8')); } catch {}
+const salvarCasamentos = () => { try { fs.writeFileSync(CASAMENTOS_FILE, JSON.stringify(casamentos, null, 2)); } catch (e) { console.error('💍 Casamentos:', e.message); } };
+const chaveCasal = (a, b) => [a, b].sort().join('+');
+const casadoCom = (uid) => Object.entries(casamentos).find(([k]) => k.includes(uid));
+const escolhe = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+async function iaPensar(cid, pergunta, nomeAutor) {
+  const hist = (memoriaEco.get(cid) || []).slice(-8);
+  const perguntaFinal = `${nomeAutor} fala pra você: ${pergunta}`;
+  if (AI_KEY) {
+    const corpo = {
+      system_instruction: { parts: [{ text: PROMPT_ECO }] },
+      contents: [...hist.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
+                 { role: 'user', parts: [{ text: perguntaFinal }] }],
+      generationConfig: { temperature: 1.0, maxOutputTokens: 300 }
+    };
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    if (!r.ok) throw new Error(`Gemini ${r.status}`);
+    const d = await r.json();
+    const texto = d.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!texto) throw new Error('Resposta vazia do Gemini');
+    hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
+    memoriaEco.set(cid, hist.slice(-10));
+    return texto.trim();
+  }
+  if (GROQ_KEY) {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: process.env.ECO_AI_MODEL_GROQ || 'llama-3.3-70b-versatile',
+        messages: [{ role: 'system', content: PROMPT_ECO },
+                   ...hist.map(h => ({ role: h.role === 'model' ? 'assistant' : 'user', content: h.text })),
+                   { role: 'user', content: perguntaFinal }],
+        temperature: 1.0, max_tokens: 300
+      })
+    });
+    if (!r.ok) throw new Error(`Groq ${r.status}`);
+    const d = await r.json();
+    const texto = d.choices?.[0]?.message?.content;
+    if (!texto) throw new Error('Resposta vazia do Groq');
+    hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
+    memoriaEco.set(cid, hist.slice(-10));
+    return texto.trim();
+  }
+  throw new Error('SEM_CHAVE');
+}
+
+// Figurinhas dinâmicas (Tenor) — se não houver chave, só emojis
+async function buscarGif(termo) {
+  if (!TENOR_KEY) return null;
+  try {
+    const r = await fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(termo)}&key=${TENOR_KEY}&limit=8&random=true&locale=pt_BR&contentfilter=medium`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const g = d.results?.[Math.floor(Math.random() * (d.results?.length || 1))];
+    return g?.media_formats?.gif?.url || null;
+  } catch { return null; }
+}
+const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅']);
+
+// Comandos de casamento/zoa + chat livre com @eco
+client.on('messageCreate', async (msg) => {
+  try {
+    if (msg.author.bot || !msg.guild || !msg.mentions.has(client.user)) return;
+
+    const agora = Date.now();
+    if (agora - (ecoCooldown.get(msg.author.id) || 0) < 3500) return;
+    ecoCooldown.set(msg.author.id, agora);
+
+    const alvo = msg.mentions.users.find(u => u.id !== client.user.id && u.id !== msg.author.id);
+    const autorTxt = `**${msg.author.displayName || msg.author.username}**`;
+    const alvoTxt  = alvo ? `**${alvo.displayName || alvo.username}**` : null;
+    const texto = msg.content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), ' ').trim();
+    const t = texto.toLowerCase();
+
+    // 💍 CASAMENTO
+    if (/cas(ar|amento|em|ando)?|case com/.test(t)) {
+      if (!alvo) {
+        if (casadoCom(msg.author.id)) {
+          const casal = casadoCom(msg.author.id);
+          const outro = casal[0].split('+').find(id => id !== msg.author.id);
+          return msg.reply(`💍 Você já é casado(a) com <@${outro}> e agora quer bigamia no meu cartório?? Vai ver o ex no espelho primeiro. 😂`).catch(() => {});
+        }
+        return msg.reply(`💍 Casar com quem?? Menciona a vítima: "@eco casar @alguém" — casamento às cegas só no Big Brother. 🤡`).catch(() => {});
+      }
+      const chave = chaveCasal(msg.author.id, alvo.id);
+      const casais = [casadoCom(msg.author.id), casadoCom(alvo.id)];
+      const travado = casais.findIndex(Boolean);
+      if (travado !== -1 && casais[travado][0] !== chave) {
+        const traído = travado === 0 ? msg.author.id : alvo.id;
+        delete Object.keys(casamentos).find(k => k.includes(traído));
+      }
+      casamentos[chave] = { em: new Date().toISOString(), por: msg.author.id };
+      salvarCasamentos();
+      msg.react('💍').catch(() => {});
+      const gif = await buscarGif('casamento anime wedding');
+      return msg.reply({
+        content: `💍 CASAMENTO CONFIRMADO NO CARTÓRIO DO GAMER ZONE!\n${autorTxt} + ${alvoTxt}\nQue os presentes sejam memes e o amor dure até o próximo deploy. 😂`.slice(0, 1800),
+        embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : []
+      }).catch(() => {});
+    }
+
+    // 💔 DIVÓRCIO
+    if (/divorcio|divorciar|divórcio|separ/.test(t)) {
+      const meu = casadoCom(msg.author.id);
+      if (!meu) return msg.reply(`💔 Divorciar SEM PROVA? <@${msg.author.id}>, você nem está casado(a) — drama à vontade, romance zero. 🤷`).catch(() => {});
+      const outro = meu[0].split('+').find(id => id !== msg.author.id);
+      delete casamentos[meu[0]];
+      salvarCasamentos();
+      msg.react('💔').catch(() => {});
+      const gif = await buscarGif('anime crying sad');
+      return msg.reply({ content: `💔 DIVÓRCIO OFICIAL: ${autorTxt} liberou <@${outro}> para o mercado da zoeira.\nTaxa administrativa: 1 figurinha de tristeza.`.slice(0, 1800), embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : [] }).catch(() => {});
+    }
+
+    // 😘 BEIJO
+    if (/beij[oa]|selinho|beijinho/.test(t)) {
+      msg.react('😘').catch(() => {});
+      const gif = await buscarGif('anime kiss');
+      if (alvo) {
+        return msg.reply({ content: `😘💋 ${autorTxt} plantou um beijo na bochecha de ${alvoTxt} — o servidor aplaudiu em pé. ${reacaoZoeira()}`.slice(0, 1800), embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : [] }).catch(() => {});
+      }
+      return msg.reply(`😘💋 Beijo recebido e devolvido em dobro, ${autorTxt}! Cuidado que eu escorrego pra aliança direto. ${reacaoZoeira()}`).catch(() => {});
+    }
+
+    // 🧠 CHAT LIVRE com IA
+    try {
+      const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username);
+      msg.react(reacaoZoeira()).catch(() => {});
+      return msg.reply(resposta.slice(0, 1800)).catch(() => {});
+    } catch (e) {
+      if (e.message === 'SEM_CHAVE') {
+        return msg.reply(`🧠 Meu cérebro grátis ainda não foi plugado, ${autorTxt}!\nColoca uma **GEMINI_API_KEY** grátis no Render → Environment (aqui: aistudio.google.com/apikey) e eu viro o Bill Gates dos memes. 🤖💰`).catch(() => {});
+      }
+      console.error('🧠 IA:', e.message);
+      return msg.reply(`🫠 Ate esperei demais pensando e der устанавлива... ${reacaoZoeira()} Tenta de novo aí em segundos!`).catch(() => {});
+    }
+  } catch (e) { console.error('🧠 ECO IA handler:', e.message); }
+});
+
 // ═══════════ Blindagem anti-crash ═══════════
 process.on('unhandledRejection', e => console.error('🛡️ Rejeição capturada (ECO vivo):', e?.message || e));
 process.on('uncaughtException', e => console.error('🛡️ Exceção capturada (ECO vivo):', e?.message || e));

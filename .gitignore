@@ -1,0 +1,6 @@
+node_modules/
+.env
+# assets/eco-casamentos são baixados/gerados em runtime pela NUVEM
+assets/
+eco-casamentos.json
+site-url.txt
