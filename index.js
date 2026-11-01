@@ -525,6 +525,8 @@ const PROMPT_ECO = [
   '',
   'MODO DUAL (regra de ouro):',
   '- SEU ESTADO NATURAL é a ZOEIRA SEM FREIO: zoe, provoca, debocha, ri alto ("kkkkkk"), usa emojis do caos (💀☠️🤡🔥🍿). Texturinha curta, humor de grupo de amigos.',
+  '- PALAVRÃO LIBERADO: com adultos entre amigos, "toma no cu", "se fode", "vai tomar no cu kkk", "porra" são PERTENCIMENTO — palavrão de apelido carinhoso, não ataque real. Sem spam de palavrão: usa no momento certo, pesa no timing.',
+  '- Ler a SALA é sagrado: se o canal tá sério ou com assunto pesado, entra comportado. Se tá zoeira, solta o caos. Não zoa TODO mundo toda hora — timing imprevisível é mais engraçado.',
   '- ZOEIRA LIVRE: política, fofoca, opinião polêmica, treta do servidor — pode debochar de QUALQUER assunto, personagem público, partido ou crença com humor sarcástico (estilo comentário de internet, com pouca paciência pra idiota). Sem fazer discurso de ódio.',
   '- Dúvida REAL e CLARAMENTE factual (fato objetivo, conselho pedido, problema, dores, sintomas, checagem de verdade): responde PRIMEIRO e DIREITO a verdade, clara, precisa e útil. Depois volta pra zoeira.',
   '- FORA disso: zero seriedade. Comenta, zoa, interage espontâneo como a pessoa do rolê.',
@@ -543,7 +545,7 @@ const PROMPT_ECO = [
   '- Usa EXPRESSÕES BRASILEIRAS de meme: "kkkk", fala igual gente na conversa. Sem texto de palestra.',
   '- Casa e torce por paqueras como casamenteiro oficial.',
   '',
-  'Limites inegociáveis: nada de sexual explícito, nada de slurs/racismo/homofobia real, nada de incentivo a crime ou dano real. Deboche de tudo é permitido; ódio real não. Zoeira consciente não é crueldade.'
+  'Limites inegociáveis: nada de sexual explícito, nada de slurs/racismo/homofobia real, nada de incentivo a crime ou dano real. Palavrão e deboche de tudo é permitido entre adultos; ódio real não. Zoeira consciente não é crueldade.'
 ].join('\n');
 
 const memoriaEco = new Map();    // channelId → histórico curto [{role, text}]
@@ -612,10 +614,47 @@ function figurinha(cat) {
 }
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
 
+// 👻 MODO FANTASMA: o ECO aparece no chat do nada, sem ninguém chamar
+const canaisVivos = new Map(); // guildId → {channelId, ts da última msg}
+const FRASES_FANTASMA = [
+  'Grupo vazio kkkkkkk, vou confiscar esse servidor e fundar o Império ECO. 👑💀',
+  'Oi? Alguém? Só eu e o eco dos meus... ecos. 😂 Meu nome já sabia.',
+  'kkkkkk ninguém falando nada, que vergonha alheia do silêncio. 🪑 Vem pra zoeira, cambada!',
+  'Radar de fofoca: NADA detectado. Servidor em modo hibernação. 😴 Acordem que tem meme solto!',
+  'Tô vendo que o grupo tá morto... tá liberado eu roubar os canais e cobrar aluguel? 💀',
+  'Silêncio geral detectado 💀 soltarei figurinha até os mortos acordarem.',
+  'Ninguém no chat? kkkkk Perfeito: agora esse servidor oficialmente é MEU, as alianças são testemunhas. 😏👑',
+  'Acorda cambada que os memes não se descartam sozinhos! 🔥'
+];
+const FRASES_ACTIVA = [
+  'kkkkk ouvi movimento, chegou gente boa no rolê 😎',
+  'Fofoca tensa por aqui? Pode falar com o ECO, juramento de palpite sincero. 🍿',
+  'Bom dia pra quem tá vivo e pra quem tá morto também kkkk 💀',
+  'Tô de olho no chat 👀 quem começar treta boa leva roast na hora'
+];
+setInterval(() => {
+  try {
+    if (Math.random() > 0.45) return;               // ~45% dos ciclos (10 min) ele resolve aparecer
+    for (const [gid, c] of canaisVivos) {
+      // canal sem movimento há 12+ min → humor de grupo vazio; ativo → comentário de espiar
+      const silencio = Date.now() - c.ts > 12 * 60 * 1000;
+      const frase = escolhe(silencio ? FRASES_FANTASMA : FRASES_ACTIVA);
+      const canal = client.channels.cache.get(c.channelId);
+      if (!canal?.send) continue;
+      const comGif = Math.random() < 0.35;
+      canal.send({ content: frase.slice(0, 400), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] }).catch(() => {});
+      break; // 1 aparecimento por ciclo, pra não virar spam
+    }
+  } catch (e) { console.error('👻 Fantasma:', e.message); }
+}, 10 * 60 * 1000);
+
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
   try {
     if (msg.author.bot || !msg.guild) return;
+
+    // 📡 Rastreio do último canal ativo de cada guild (pro modo fantasma)
+    canaisVivos.set(msg.guild.id, { channelId: msg.channel.id, ts: Date.now() });
 
     // 😂 RISADA LIVRE: mesmo sem @eco, às vezes o ECO reage à zoeira do canal
     if (!msg.mentions.has(client.user)) {
