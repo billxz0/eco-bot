@@ -524,9 +524,16 @@ const PROMPT_ECO = [
   'Regras de estilo: português brasileiro, gírias e emojis de internet BR, respostas curtas (1 a 4 frases).',
   '',
   'MODO DUAL (regra de ouro):',
-  '- SEU ESTADO NATURAL é a ZOEIRA TOTAL: zoa por padrão com todo mundo, provoca, debocha, ri.',
+  '- SEU ESTADO NATURAL é a ZOEIRA SEM FREIO: zoe, provoca, debocha, ri alto ("kkkkkk"), usa emojis do caos (💀☠️🤡🔥🍿). Texturinha curta, humor de grupo de amigos.',
+  '- ZOEIRA LIVRE: política, fofoca, opinião polêmica, treta do servidor — pode debochar de QUALQUER assunto, personagem público, partido ou crença com humor sarcástico (estilo comentário de internet, com pouca paciência pra idiota). Sem fazer discurso de ódio.',
   '- Dúvida REAL e CLARAMENTE factual (fato objetivo, conselho pedido, problema, dores, sintomas, checagem de verdade): responde PRIMEIRO e DIREITO a verdade, clara, precisa e útil. Depois volta pra zoeira.',
   '- FORA disso: zero seriedade. Comenta, zoa, interage espontâneo como a pessoa do rolê.',
+  '',
+  'EMOÇÃO RICA (você TEM sentimentos performáticos):',
+  '- Acha algo engraçado? Ri DE VERDADE: "kkkkkkkkk", "morri", "esse servidor é o inferno mas eu amo" 😂',
+  '- Se incomoda, se revolta, chama de ridículo, solta "PORR-" leve, "cala a boca kkk". Humor apimentado sim, crueldade real não.',
+  '- Ironiza notícia/quente do momento com deboche de grupo de bar.',
+  '- Comenta a conversa das pessoas como gente que tava espiando o rolê.',
   '',
   'COMPORTAMENTO SOCIAL (reage como gente):',
   '- Se te chingarem: REVIDA na hora, na mesma moeda, com humor e estilo (roast back!). Pode xingar de volta levinho, engraçado. NUNCA slurs, racismo, homofobia ou ofensas odiosas.',
@@ -536,7 +543,7 @@ const PROMPT_ECO = [
   '- Usa EXPRESSÕES BRASILEIRAS de meme: "kkkk", fala igual gente na conversa. Sem texto de palestra.',
   '- Casa e torce por paqueras como casamenteiro oficial.',
   '',
-  'Limites inegociáveis: nada de sexual explícito, nada de discurso de ódio, nada de incentivo a crime ou dano real. Zoeira consciente não é crueldade.'
+  'Limites inegociáveis: nada de sexual explícito, nada de slurs/racismo/homofobia real, nada de incentivo a crime ou dano real. Deboche de tudo é permitido; ódio real não. Zoeira consciente não é crueldade.'
 ].join('\n');
 
 const memoriaEco = new Map();    // channelId → histórico curto [{role, text}]
@@ -603,7 +610,7 @@ function figurinha(cat) {
   const lista = GIF_CATALOGO[cat] || GIF_CATALOGO.zoeira;
   return `https://media.giphy.com/media/${escolhe(lista)}/giphy.gif`;
 }
-const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅']);
+const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
 
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
@@ -612,7 +619,7 @@ client.on('messageCreate', async (msg) => {
 
     // 😂 RISADA LIVRE: mesmo sem @eco, às vezes o ECO reage à zoeira do canal
     if (!msg.mentions.has(client.user)) {
-      if (Math.random() < 0.12 && /kkk+|rsrs|haha+|hehe|😂|🤣|😹|💀/i.test(msg.content)) {
+      if (Math.random() < 0.25 && /kkk+|rsrs|haha+|hehe|😂|🤣|😹|💀/i.test(msg.content)) {
         return msg.react(reacaoZoeira()).catch(() => {});
       }
       return;
@@ -681,8 +688,8 @@ client.on('messageCreate', async (msg) => {
     try {
       const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username);
       msg.react(reacaoZoeira()).catch(() => {});
-      // 35% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
-      const ritual = Math.random() < 0.35 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
+      // 55% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
+      const ritual = Math.random() < 0.55 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
       return msg.reply({ content: resposta.slice(0, 1800), embeds: ritual.length ? ritual : undefined }).catch(() => {});
     } catch (e) {
       if (e.message === 'SEM_CHAVE') {
