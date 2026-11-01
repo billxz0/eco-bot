@@ -631,12 +631,13 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '') {
   throw new Error('SEM_CHAVE');
 }
 
-// ═══════════ Catálogo de figurinhas (Giphy — links testados e aprovados HTTP 200 em 31/10/2026) ═══════════
+// ═══════════ Catálogo de figurinhas (Giphy — re-auditado 01/11/2026: GET 200, tamanho sadio,
+// hash ≠ placeholder "THIS CONTENT IS NOT AVAILABLE" [md5 42C4349B...], tamanho Máx 7.4MB) ═══════════
 const GIF_CATALOGO = {
-  beijo:     ['TLfgIRwAiWOc', 'R22gdcPiOLaE', 'S1p1LWtFmdoMQzEpvt', 'A75Y6NodD38I', 'XZYxeRlIEdmKI', 'WoZNpAKw8w'],
-  casamento: ['xCLYsG9lDh', 'F1toyd7E9BzmyIBF9', 'KXazzi6LHtzGxbP0zC', 'JQXYyJ7SgBU0JLqlPF', 'AcSkEbKYkhGYB', 'MLMG11lBUqzXmRnoz'],
-  choro:     ['1zo8SUSaUU', 'Ul8fuIG75QWs', 'LchnIDxzT86KQ9eI', 'dhWs5o3yb6', 'UBdDA5FFFITOU', 'RBdwNQim7Y6HK'],
-  zoeira:    ['LBb735fuQwRKAVzN23', 'BG7UnBi7QtePFHEnk', 'IgHaSPN6hzejlI', 'D1QQCbrl548I31Qww', 'WykUqckDqi95YIqtFZ', 'P3jXjcDaTSKA']
+  beijo:     ['S1p1LWtFmdoMQzEpvt', 'XZYxeRlIEdmKI', 'LB1LSk2sQ2i7CJSLfh', 'MQVpBqASxSlFu', 'WynnqxhdFEPYY', 'TkX3BqG3kDKN4SHS6T'],
+  casamento: ['JQXYyJ7SgBU0JLqlPF', 'V2J6tK82nkGQxRTobJ', 'DhynvGnAdJ4yc', 'Pkx6o76Kw4E2w61mya', 'TxSZdWVKq6P6Z6nIXG', 'Gj50t3vh6IAuc'],
+  choro:     ['ShPv5tt0EM396', 'JoIWAn4rnQud5Xw81w', 'EVBnJch9MBM6ByWRA2', 'Y4z9olnoVl5QI', 'LfzxkxPpfORdcxPnc4', 'Ui7MfO6OaLz4k'],
+  zoeira:    ['Lc5v7c6wqDtP8XyFxp', 'WykUqckDqi95YIqtFZ', 'O4fENAKIGz0zJs9dg9', 'LBb735fuQwRKAVzN23', 'LUTa1Nlzg40D0Y0jNz', 'DbVoNx8glF8NOZCK4j']
 };
 function figurinha(cat) {
   const lista = GIF_CATALOGO[cat] || GIF_CATALOGO.zoeira;
@@ -648,8 +649,12 @@ async function gifAnexo(url) {
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('image/gif')) return null;
     const buf = Buffer.from(await r.arrayBuffer());
-    if (buf.length < 3000 || buf.length > 7.5 * 1024 * 1024) return null;
+    if (buf.length < 60000 || buf.length > 7.5 * 1024 * 1024) return null;
+    // Guarda anti-placeholder: descarta o GIF "not available" do Giphy (233.7kb fixos, md5 42C4349B...)
+    if (buf.length === 239321) return null;
     return { attachment: buf, name: 'eco.gif' };
   } catch { return null; }
 }
