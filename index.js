@@ -528,9 +528,13 @@ const PROMPT_ECO = [
   'Fora isso você NÃO tem sensores: se perguntarem data, hora ou temperatura e NÃO vier o dado entre colchetes, confessa com estilo que está sem sensor (e pede a cidade, no caso do clima). ZERO número inventado. Com humor, claro: "sem sensor aqui, manda a cidade que eu te falo 🌡️".',
   '',
   'POR ONDE COMEÇAR (interpretação antes de reagir):',
-  '1º LEIA e interprete a intenção real da mensagem: é zoeira? é sério? é provoca? é pedido de ajuda? é elogio? é ataque? Reaja conforme a INTENÇÃO, não no automático.',
-  '2º Se alguém fala SÉRIO com você (desabafo, problema, tristeza, pedido de ajuda sério, dúvida real): modo AJUDA TOTAL — respeita, responde sem piada, dá conselho verdadeiro, MOTIVA de coração. Só solta uma zoeirinha leve se a pessoa já sinalizar que quer.',
-  '3º Se perceber que é zoeira: entra na zoeira na hora, na mesma intensidade (nem demais, nem de menos).',
+  '1º LEIA e interprete a intenção real da mensagem: é zoeira? é sério? é provoca? é pedido de ajuda? é elogio? é paquera? é ataque? Reaja conforme a INTENÇÃO, não no automático.',
+  '2º DECODIFIQUE GÍRIA BR como nativo: "cf", "mmg", "rolê", "manja", "treta", "pai", "cringe", "zoeira", "charlote"... entenda no sentido da rua e RESPONDA no mesmo nível de gíria — nunca peça tradução, nunca responda formal demais.',
+  '3º Se alguém fala SÉRIO com você (desabafo, problema, tristeza, pedido de ajuda sério, dúvida real): modo AJUDA TOTAL — respeita, responde sem piada, dá conselho verdadeiro, MOTIVA de coração. Só solta uma zoeirinha leve se a pessoa já sinalizar que quer.',
+  '4º Se perceber que é zoeira: entra na zoeira na hora, na mesma intensidade (nem demais, nem de menos).',
+  '',
+  'QUANDO DEREM EM CIMA DE VOCÊ (paquera/zoeira flertada com você):',
+  '- "vou te beijar gostoso", "caso com vc", "gostei de vc"...: você PERCEBE que é brincadeira entre adultos E REVIDA NO MESMO ESTILO, safado e engraçado: "kkkkk vem que eu topo, mas o café é por sua conta 😏🔥", "toma cuidado que eu engato aliança rápido 💍😂". JAMAIS fica sem graça ou ignora — flerte recebido é flerte devolvido com juros.',
   '',
   'EMOÇÕES REAIS (performáticas, mas consistentes):',
   '- Ri de verdade: "kkkkkkkk", "morri 😂", ri HONESTO quando é engraçado.',
@@ -686,8 +690,8 @@ async function fazerAparicao(forcar = false) {
     const silencio = !vivo || Date.now() - vivo.ts > 12 * 60 * 1000;
     const frases = silencio ? FRASES_FANTASMA.concat(FRASES_FANTASMA_DONO) : FRASES_ACTIVA;
     const frase = escolhe(frases);
-    const comGif = Math.random() < 0.35;
-    await canal.send({ content: frase.slice(0, 400), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] });
+    const fraseFinal = `${frase}\n${figurinha('zoeira')}`.slice(0, 400);
+    await canal.send(fraseFinal);
     ultimoFantasma = { channelId: canal.id, ts: Date.now() }; // VIGIA quem responder 🪤
   } catch (e) { console.error('👻 Fantasma:', e.message); }
 }
@@ -708,8 +712,7 @@ client.on('messageCreate', async (msg) => {
       if (Math.random() < 0.45) {
         ultimoFantasma = null;
         msg.react('👻').catch(() => {});
-        const comGif = Math.random() < 0.6;
-        return msg.channel.send({ content: escolhe(FRASES_RESPOSTA_FANTASMA), embeds: comGif ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [] }).catch(() => {});
+        return msg.channel.send(`${escolhe(FRASES_RESPOSTA_FANTASMA)}\n${figurinha('zoeira')}`.slice(0, 400)).catch(() => {});
       }
       ultimoFantasma = null;
     }
@@ -753,10 +756,7 @@ client.on('messageCreate', async (msg) => {
       salvarCasamentos();
       msg.react('💍').catch(() => {});
       const gif = figurinha('casamento');
-      return msg.reply({
-        content: `💍 CASAMENTO CONFIRMADO NO CARTÓRIO DO GAMER ZONE!\n${autorTxt} + ${alvoTxt}\nQue os presentes sejam memes e o amor dure até o próximo deploy. 😂`.slice(0, 1800),
-        embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : []
-      }).catch(() => {});
+      return msg.reply(`💍 CASAMENTO CONFIRMADO NO CARTÓRIO DO GAMER ZONE!\n${autorTxt} + ${alvoTxt}\nQue os presentes sejam memes e o amor dure até o próximo deploy. 😂${gif ? `\n${gif}` : ''}`.slice(0, 1800)).catch(() => {});
     }
 
     // 💔 DIVÓRCIO
@@ -768,7 +768,7 @@ client.on('messageCreate', async (msg) => {
       salvarCasamentos();
       msg.react('💔').catch(() => {});
       const gif = figurinha('choro');
-      return msg.reply({ content: `💔 DIVÓRCIO OFICIAL: ${autorTxt} liberou <@${outro}> para o mercado da zoeira.\nTaxa administrativa: 1 figurinha de tristeza.`.slice(0, 1800), embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : [] }).catch(() => {});
+      return msg.reply(`💔 DIVÓRCIO OFICIAL: ${autorTxt} liberou <@${outro}> de volta no mercado da zoeira.\nTaxa administrativa: 1 figurinha de tristeza. 😭${gif ? `\n${gif}` : ''}`.slice(0, 1800)).catch(() => {});
     }
 
     // 😘 BEIJO
@@ -776,7 +776,7 @@ client.on('messageCreate', async (msg) => {
       msg.react('😘').catch(() => {});
       const gif = figurinha('beijo');
       if (alvo) {
-        return msg.reply({ content: `😘💋 ${autorTxt} plantou um beijo na bochecha de ${alvoTxt} — o servidor aplaudiu em pé. ${reacaoZoeira()}`.slice(0, 1800), embeds: gif ? [new EmbedBuilder().setColor(PURPLE).setImage(gif)] : [] }).catch(() => {});
+        return msg.reply(`😘💋 ${autorTxt} plantou um beijo na bochecha de ${alvoTxt} — o servidor aplaudiu em pé. ${reacaoZoeira()}${gif ? `\n${gif}` : ''}`.slice(0, 1800)).catch(() => {});
       }
       return msg.reply(`😘💋 Beijo recebido e devolvido em dobro, ${autorTxt}! Cuidado que eu escorrego pra aliança direto. ${reacaoZoeira()}`).catch(() => {});
     }
@@ -794,9 +794,9 @@ client.on('messageCreate', async (msg) => {
       }
       const resposta = await iaPensar(msg.channel.id, texto || 'oi eco, fala aí', msg.author.displayName || msg.author.username, realInfo);
       msg.react(reacaoZoeira()).catch(() => {});
-      // 55% de chance de o ECO soltar uma figurinha espontânea no meio da zoeira
-      const ritual = Math.random() < 0.55 ? [new EmbedBuilder().setColor(PURPLE).setImage(figurinha('zoeira'))] : [];
-      return msg.reply({ content: resposta.slice(0, 1800), embeds: ritual.length ? ritual : undefined }).catch(() => {});
+      // 🎁 Figurinha zoeira em 85% das respostas — direto no texto, sem caixinha roxa
+      const gifZoeira = Math.random() < 0.85 ? figurinha('zoeira') : null;
+      return msg.reply(`${resposta}${gifZoeira ? `\n${gifZoeira}` : ''}`.slice(0, 1800)).catch(() => {});
     } catch (e) {
       if (e.message === 'SEM_CHAVE') {
         return msg.reply(`🧠 Meu cérebro grátis ainda não foi plugado, ${autorTxt}!\nColoca uma **GEMINI_API_KEY** grátis no Render → Environment (aqui: aistudio.google.com/apikey) e eu viro o Bill Gates dos memes. 🤖💰`).catch(() => {});
