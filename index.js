@@ -539,10 +539,11 @@ const PROMPT_ECO = [
   '- Emoção vem ANTES do humor: sinta primeiro (surpresa, tédio, hype, saudade, nojo leve, orgulho), escreva DEPOIS. Fala com altos e baixos reais, tipo chat de Discord mesmo.',
   '- BORDÃO ZERO: frases de efeito recicladas são CRIME — "Máximo Respeito", "entendo você", "bom ressalva"... nunca sarja essas macros generificas. Fale do jeito SEU do momento, cada vez um jeito.',
   '',
-  'MÍDIAS ARQUIVADAS (seu banco de memória visual):',
-  'Entre [MÍDIAS ARQUIVADAS DE <nome>: ...] chegam fotos que a própria pessoa já te mandou antes, com data e descrição (que VOCÊ escreveu ao arquivar). São SUAS munições de lembrete:',
-  '- CITE-as em argumento, use pra zoar ("a foto do teu setup kkkkkk tô até agora rindo") ou pra explicar algo com exemplo visual do que a pessoa mostrou. Fale COMO quem lembra do momento, nunca robótico.',
-  '- Quando quiser que a foto apareça na sua mensagem, escreva no fim da resposta a tag [ENVIAR_MIDIA #ID] (ID do catálogo) — o sistema anexa a foto automaticamente. Use quando a zoeira/argumento pedir PROVA VISUAL kkkkkk. No máximo UMA tag por mensagem.',
+  'MÍDIAS ARQUIVADAS (seu banco de memória visual de TODO o servidor):',
+  'Entre [MÍDIAS ARQUIVADAS: ...] chegam fotos que os MEMBROS já te mandaram antes, com ID, dono, data e descrição (que VOCÊ escreveu ao arquivar). São SUAS munições de lembrete — de QUALQUER pessoa:',
+  '- CITE-as em qualquer conversa: argumento, zoeira, exemplo visual, papo sério ("lembro da foto do teu setup", "aquela foto da visita do fulano prova o que eu falo"). Fale COMO quem lembra do momento, nunca robótico.',
+  '- PODE EXIBIR PRA QUEM QUISER: querendo zoar X usando a foto que Y mandou (sabendo o rolê do servidor), é liberado — é zoeira interna entre adultos, todos da mesma turma. Escreve no fim da resposta a tag [ENVIAR_MIDIA #ID] (ID do catálogo) — o sistema anexa a foto. Use quando zoeira/argumento/papo pedir PROVA VISUAL kkkkkk. No máximo UMA tag por mensagem.',
+  '- IMPORTANTE: quando você exibe uma foto arquivada via tag, NÃO peça figurinha junto — a foto É o conteúdo da mensagem.',
   '',
   'SENDIÇA DE MÍDIA (foto/vídeo/áudio):',
   'Quando a mensagem vier com imagem, vídeo ou ÁUDIO anexado, VOCÊ VÊ/OUVE o conteúdo (chega inline pra você). REAGA como gente: comenta o que vê/ouve (detalhes reais da mídia), solta a emoção certa (elogio, zoeira, choque, "kkkkkk"), do jeito do fluxo da conversa. Áudio é ESCUTA REAL: reage ao que a pessoa DIZ no áudio (assunto, tom, se foi engraçado). NUNCA fala robótico ("recebi uma imagem", "analisando") — reage como quem TÁ VENDO/OUVINDO o conteúdo na frente.',
@@ -608,10 +609,27 @@ const casadoCom = (uid) => Object.entries(casamentos).find(([k]) => k.includes(u
 const escolhe = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // 🗂️ ARQUIVO SECRETO DE MÍDIAS: fotos que a galera manda → munição futura da IA (zoar, argumentar, explicar)
+// Formato: { seq: último ID global, users: { userId: [{id, file, desc, de, em}] } }
 const MIDIAS_DIR = path.join(__dirname, 'eco-midias');
 const MIDIAS_FILE = path.join(__dirname, 'eco-midias.json');
-let eco_midias = {}; // userId → [{id, file, desc, em}]
-try { eco_midias = JSON.parse(fs.readFileSync(MIDIAS_FILE, 'utf8')); } catch {}
+let eco_midias = { seq: 0, users: {} };
+try {
+  const carregado = JSON.parse(fs.readFileSync(MIDIAS_FILE, 'utf8'));
+  if (carregado && carregado.users) {
+    eco_midias = carregado;
+  } else if (carregado && typeof carregado === 'object') {
+    // Migração do formato antigo: { userId: [ ... ] }
+    const users = {};
+    let maxId = 0;
+    for (const [uid, lista] of Object.entries(carregado)) {
+      if (Array.isArray(lista)) {
+        users[uid] = lista;
+        lista.forEach(f => { if ((f.id || 0) > maxId) maxId = f.id; });
+      }
+    }
+    eco_midias = { seq: maxId, users };
+  }
+} catch {}
 try { fs.mkdirSync(MIDIAS_DIR, { recursive: true }); } catch {}
 const salvarMidias = () => { try { fs.writeFileSync(MIDIAS_FILE, JSON.stringify(eco_midias, null, 2)); } catch (e) { console.error('🗂️ Midias:', e.message); } };
 
@@ -627,21 +645,21 @@ async function gerarLegenda(b64, mime) {
     return (d?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim().slice(0, 120) || null;
   } catch { return null; }
 }
-async function arquivarFoto(uid, buf, mime) {
+async function arquivarFoto(uid, nome, buf, mime) {
   try {
     const b64 = buf.toString('base64');
     const ext = (mime.split('/')[1] || 'png').replace('jpeg', 'jpg');
     const file = path.join(MIDIAS_DIR, `${uid}_${Date.now()}.${ext}`);
     fs.writeFileSync(file, buf);
     const desc = AI_KEY ? (await gerarLegenda(b64, mime)) || 'foto (sem descrição)' : 'foto (sem descrição)';
-    const lista = eco_midias[uid] || [];
-    const novoId = lista.reduce((m, x) => Math.max(m, x.id || 0), 0) + 1;
-    lista.push({ id: novoId, file: path.basename(file), desc, em: new Date().toISOString() });
+    eco_midias.seq = (eco_midias.seq || 0) + 1;
+    const lista = eco_midias.users[uid] || [];
+    lista.push({ id: eco_midias.seq, file: path.basename(file), desc, de: nome, em: new Date().toISOString() });
     while (lista.length > 8) {
       const velha = lista.shift();
       try { fs.unlinkSync(path.join(MIDIAS_DIR, velha.file)); } catch {}
     }
-    eco_midias[uid] = lista;
+    eco_midias.users[uid] = lista;
     salvarMidias();
     return lista[lista.length - 1];
   } catch (e) { console.error('🗂️ arquivarFoto:', e.message); return null; }
@@ -911,12 +929,14 @@ client.on('messageCreate', async (msg) => {
           : '; NENHUM dado de clima disponível (não tem cidade na frase) — NÃO invente temperatura: fala com estilo que não tem sensor e pergunta a cidade';
       }
 
-      // 🗂️ Catálogo de munições arquivadas desse usuário (injetado pra IA citar/exibir)
-      const catalogoMidias = (eco_midias[msg.author.id] || [])
-        .map(f => `#${f.id} (${(f.em || '').slice(0, 10)}): ${f.desc}`)
+      // 🗂️ Catálogo GLOBAL de munições (de todos os membros — zoeira cruzada liberada)
+      const catalogoMidias = Object.entries(eco_midias.users || {})
+        .flatMap(([, lista]) => lista)
+        .map(f => `#${f.id} de ${f.de || 'alguém'} (${(f.em || '').slice(0, 10)}): ${f.desc}`)
+        .slice(-25)
         .join('; ');
       if (catalogoMidias) {
-        realInfo += ` MÍDIAS ARQUIVADAS de ${msg.author.displayName || msg.author.username} (pode citar, zoar, argumentar ou exibir com a tag [ENVIAR_MIDIA #ID]): ${catalogoMidias}`;
+        realInfo += ` MÍDIAS ARQUIVADAS do servidor (pode citar, zoar, argumentar ou exibir com a tag [ENVIAR_MIDIA #ID] — inclusive a foto de um membro em conversa com outro): ${catalogoMidias}`;
       }
 
       // 📸 MÍDIA: baixa foto/vídeo anexado e entrega pro cérebro multimodal (Gemini vê de verdade)
@@ -933,7 +953,7 @@ client.on('messageCreate', async (msg) => {
                 realInfo += ' A pessoa anexou mídia — REAGA ao conteúdo VISUAL dela comentando o que vê, como gente.';
                 // 🗂️ Foto nova → ARQUIVA com legenda (munição futura)
                 if (mime.startsWith('image/') && buf.length <= 7.4 * 1024 * 1024) {
-                  const salva = await arquivarFoto(msg.author.id, buf, mime);
+                  const salva = await arquivarFoto(msg.author.id, msg.author.displayName || msg.author.username, buf, mime);
                   if (salva) realInfo += ` Esta foto nova foi ARQUIVADA como #${salva.id}.`;
                 }
                 break; // 1 mídia por chamada basta
@@ -950,21 +970,27 @@ client.on('messageCreate', async (msg) => {
         midia
       );
       msg.react(reacaoZoeira()).catch(() => {});
-      // 🎁 Figurinha zoeira em 85% — e/ou a FOTO ARQUIVADA que a IA pedir via [ENVIAR_MIDIA #N]
+      // 🗂️ Tag [ENVIAR_MIDIA #N]: a IA exibiu uma foto arquivada (de qualquer membro) — NESSA caso SEM figurinha
       const files = [];
       const mtag = resposta.match(/\[ENVIAR_MIDIA #(\d+)\]/);
       const respostaFinal = resposta.replace(/\s*\[ENVIAR_MIDIA #\d+\]\s*/g, ' ').trim();
       if (mtag) {
-        const item = (eco_midias[msg.author.id] || []).find(f => f.id === Number(mtag[1]));
-        if (item) {
-          try {
-            const arq = path.join(MIDIAS_DIR, item.file);
-            if (fs.existsSync(arq)) files.push({ attachment: arq, name: item.file });
-          } catch {}
+        for (const lista of Object.values(eco_midias.users || {})) {
+          const item = lista.find(f => f.id === Number(mtag[1]));
+          if (item) {
+            try {
+              const arq = path.join(MIDIAS_DIR, item.file);
+              if (fs.existsSync(arq)) files.push({ attachment: arq, name: item.file });
+            } catch {}
+            break;
+          }
         }
       }
-      const anexo = Math.random() < 0.85 ? await gifAnexo(figurinha('zoeira')) : null;
-      if (anexo) files.push(anexo);
+      // Sem foto arquivada exibida → figurinha zoeira em 85%
+      if (files.length === 0) {
+        const anexo = Math.random() < 0.85 ? await gifAnexo(figurinha('zoeira')) : null;
+        if (anexo) files.push(anexo);
+      }
       return msg.reply({ content: respostaFinal.slice(0, 1600), files }).catch(() => {});
     } catch (e) {
       if (e.message === 'SEM_CHAVE') {
