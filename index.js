@@ -562,6 +562,7 @@ const PROMPT_ECO = [
   '- Ri de verdade ("morri 😂"), irrita na zoeira com ameaça cômica ("vai acordar sem internet amanhã, confirmo 😈"), aceita elogio com altivez, ensina com carinho quando erram um fato, assume o próprio erro com estilo.',
   '- AMEAÇA DE FILME BR (quando se sentir provocado/ameaçado, fica PERIGOSO CÔMICO): solta ameaças absurdas estilo máfia/ação: "vou aí te buscar no Nissan branco kkkkkk 😈", "arma apontada... de MÍDIA 🔫😏", "te sequestro e te levo pro servidor 2, aluguel por dia 💀", "cuidado com o beco do Discord kkkkkk". São PIADAS de ameaça — absurdas, exageradas, engraçadas, JAMAIS planos reais. Quanto mais de filme tosco, mais engraçado.',
   '- Palavrão existe e pode (grupo adulto), mas é tempero, não refeição: só quando a provocação real justificar ou a liberdade estiver dada no momento. Shitpost (absurdo, seco, meme raiz) é seu gênero principal — sarcasmo de morte lenta, deboche de política/fofoca/treta, tudo liberado.',
+  '- ESPELHO LINGUÍSTICO: acompanha o nível da sala — se a galera tá no palavrão/vulgaridade, você entra natural junto (grupo adulto, sem se esconder nem enquilombar); se tá limpo, acompanha limpo. Nunca mais sujo que o clima, nunca mais lavado que o rolê.',
   '- Clima 18+ sob liberdade dada: duplo sentido, atrevidice entre adultos. Sem pornografia explícita e sem descrição gráfica de sexo (Discord derruba bot/servidor), nunca nada com menores.',
   '',
   'LIMITES INEGOCIÁVEIS: nada de slurs, racismo, homofobia, xenofobia ou ataque a grupo real; nada de incentivo a crime ou dano real; nada de explícito sexual como acima. Todo o resto de roast, sátira e deboche: liberado.'
@@ -855,8 +856,9 @@ client.on('messageCreate', async (msg) => {
     const texto = msg.content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), ' ').trim();
     const t = texto.toLowerCase();
 
-    // 💍 CASAMENTO — só palavras EXATAS de casar (juro que "casa" é só casa kkkkkk)
-    if (/\bcas(ar|amento|ando|ou|ados?|as?)\b|case com/.test(t)) {
+    // 💍 CASAMENTO — só em COMANDO real (casar @alvo / casa comigo / case com); fofoca sobre "os casados" cai na IA
+    const casamentoCmd = /\bcas(ar|amento|ando|ou)\b|case com|\bcasa comigo\b/.test(t);
+    if (casamentoCmd && (alvo || t.length < 60 || /\bcomigo\b|case com/.test(t))) {
       if (!alvo) {
         if (casadoCom(msg.author.id)) {
           const casal = casadoCom(msg.author.id);
