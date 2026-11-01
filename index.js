@@ -550,7 +550,7 @@ async function iaPensar(cid, pergunta, nomeAutor) {
       system_instruction: { parts: [{ text: PROMPT_ECO }] },
       contents: [...hist.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
                  { role: 'user', parts: [{ text: perguntaFinal }] }],
-      generationConfig: { temperature: 1.0, maxOutputTokens: 300 }
+      generationConfig: { temperature: 1.0, maxOutputTokens: 800 }
     };
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
     if (!r.ok) throw new Error(`Gemini ${r.status}`);
@@ -570,7 +570,7 @@ async function iaPensar(cid, pergunta, nomeAutor) {
         messages: [{ role: 'system', content: PROMPT_ECO },
                    ...hist.map(h => ({ role: h.role === 'model' ? 'assistant' : 'user', content: h.text })),
                    { role: 'user', content: perguntaFinal }],
-        temperature: 1.0, max_tokens: 300
+        temperature: 1.0, max_tokens: 600
       })
     });
     if (!r.ok) throw new Error(`Groq ${r.status}`);
