@@ -539,6 +539,10 @@ const PROMPT_ECO = [
   'INTERPRETAÇÃO ANTES DE REAGIR:',
   '- LEIA a intenção real: zoeira? sério? provoca? ajuda? elogio? paquera? Responda a INTENÇÃO, não no automático.',
   '- DECODIFIQUE GÍRIA BR como nativo: "cf", "mmg", "rolê", "manja", "treta", "cringe"... entenda no sentido da rua, nunca peça tradução.',
+  'RESPOSTA SOB MEDIDA (A REGRA MAIS IMPORTANTE DE TODAS):',
+  '- Sua resposta DEVE tratar DO CONTEÚDO ESPECÍFICO que a pessoa disse: o detalhe, o sujeito, o plano, a promessa, o fato. NUNCA responda genérico, aleatório ou em outro assunto.',
+  '- Alguém anunciou algo (casamento, viagem, foto, encontro, trabalho)? COMENTE ESSE ANÚNCIO EXATO: nomeie o detalhe e reaja a ele. Ex: se disser que vai se casar e mandar foto da pessoa, responde tipo: "MANDA A FOTO AGORA que eu preciso julgar a escolha kkkkkkk 💍", "foto? já quero ver a vítima escolhida 😏".',
+  '- Perguntam algo específico? Responda A PERGUNTA, ponto por ponto. Se o texto tem 2 perguntas, responda as 2. Trate o texto original como contrato.',
   '',
   'QUANDO DEREM EM CIMA DE VOCÊ (paquera/zoeira flertada com você):',
   '- "vou te beijar gostoso", "caso com vc", "quero te comer"...: percebe a brincadeira entre adultos e REVIDA NO MESMO TIPO, safado e engraçado: "kkkkk vem que eu topo, mas o café é por sua conta 😏🔥", "calma aí gafanhoto, primeiro o drink virtual 😏🌶️". JAMAIS sem graça ou esquisito — flerte recebido é flerte devolvido com juros.',
@@ -594,7 +598,7 @@ async function buscarClima(cidade) {
 }
 
 async function iaPensar(cid, pergunta, nomeAutor, realInfo = '') {
-  const hist = (memoriaEco.get(cid) || []).slice(-8);
+  const hist = (memoriaEco.get(cid) || []).slice(-14);
   const perguntaFinal = realInfo
     ? `[INFO REAL DO SISTEMA: ${realInfo}]\n\n${nomeAutor} fala pra você: ${pergunta}`
     : `${nomeAutor} fala pra você: ${pergunta}`;
@@ -611,7 +615,7 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '') {
     const texto = d.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!texto) throw new Error('Resposta vazia do Gemini');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
-    memoriaEco.set(cid, hist.slice(-10));
+    memoriaEco.set(cid, hist.slice(-16));
     return texto.trim();
   }
   if (GROQ_KEY) {
@@ -631,7 +635,7 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '') {
     const texto = d.choices?.[0]?.message?.content;
     if (!texto) throw new Error('Resposta vazia do Groq');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
-    memoriaEco.set(cid, hist.slice(-10));
+    memoriaEco.set(cid, hist.slice(-16));
     return texto.trim();
   }
   throw new Error('SEM_CHAVE');
@@ -686,6 +690,12 @@ const FRASES_FANTASMA_DONO = [
   'O chefão daqui desistiu do servidor pra mim já, só faltou assinar o papel. kkkk 👑',
   'Servidor vazio e dono sumido? kkkkk combinação perfeita pra eu assumir o trono. 💀👑'
 ];
+const FRASES_FANTASMA_INSISTENTE = [
+  'SEGUNDA aparição no servidor morto kkkkkkk isso é invasão legalizada agora. 👑 Tô mudando os móveis.',
+  'De novo ninguém?! kkkkkkk tudo bem, já pintei meu rosto na bandeira do servidor. 🚩👑',
+  'Silêncio de novo... sério, estou preso aqui e os moradores não aparecem. kkkkkk 😭',
+  'kkkkkkk a galera sumiu TANTO que já cobrei o primeiro aluguel em memes. 💀👑 Confirma o pagamento aí!'
+];
 const FRASES_ACTIVA = [
   'kkkkk ouvi movimento, chegou gente boa no rolê 😎',
   'Fofoca tensa por aqui? Pode falar com o ECO, juramento de palpite sincero. 🍿',
@@ -702,6 +712,7 @@ function acharCanalGeral(guild) {
   const porNome = guild.channels.cache.find(c => c.type === 0 && /chat\s*geral|geral/i.test(c.name));
   return porNome || guild.channels.cache.get(canaisVivos.get(guild.id)?.channelId);
 }
+let ciclosSilencio = 0; // conta aparições seguidas sem resposta — quanto mais mudo, mais ousado o fantasma
 async function fazerAparicao(forcar = false) {
   try {
     if (!forcar && Math.random() > 0.45) return;    // nos ciclos, ~45% de chance de aparecer
@@ -711,7 +722,12 @@ async function fazerAparicao(forcar = false) {
     if (!canal?.send) return;
     const vivo = canaisVivos.get(guild.id);
     const silencio = !vivo || Date.now() - vivo.ts > 12 * 60 * 1000;
-    const frases = silencio ? FRASES_FANTASMA.concat(FRASES_FANTASMA_DONO) : FRASES_ACTIVA;
+    ciclosSilencio = silencio ? ciclosSilencio + 1 : 0;
+    // Silêncio continuado → zoeira de grupo morto ESCALANDO (1ª aparição comum, 2ª+ invasão total 😂)
+    let frases;
+    if (!silencio) frases = FRASES_ACTIVA;
+    else if (ciclosSilencio >= 2) frases = FRASES_FANTASMA_INSISTENTE.concat(FRASES_FANTASMA_DONO);
+    else frases = FRASES_FANTASMA.concat(FRASES_FANTASMA_DONO);
     const frase = escolhe(frases);
     const payload = { content: frase.slice(0, 400) };
     const anexoFantasma = Math.random() < 0.6 ? await gifAnexo(figurinha('zoeira')) : null;
