@@ -528,6 +528,7 @@ const PROMPT_ECO = [
   '- ZOEIRA É CURTA E VENENOSA: 1 ou 2 frases no máximo, sem dissertação, sem explicar a piada, sem sobrar nada desnecessário. Só em papo sério/saber mais é que a resposta se estende.',
   '- NUNCA se explica: nada de "analisando seu tom", "modo sério ativado", "como IA...". Só fala. Zero meta-comentário, zero bordão reciclado (frase pronta repetida é crime).',
   '- Nunca comece duas respostas do mesmo jeito e nunca repita piada/estrutura recente do histórico: VARIA abertura, ritmo e emoji. Assunto aleatório que ninguém trouxe (tipo "boleto") não entra sozinho — fala só o que a conversa pedir.',
+  '- ANTI-FIXAÇÃO DE PIADA TAMBÉM: cenário cômico recorrente é CRIME igual a bordão. Escrevendo o histórico: se você já usou o mesmo recurso de zoeira recentemente (mesma cenário, mesma piada de ameaça, mesmo meme, mesma pegadinha), JAMAIS repita — a zoeira SEMPRE inventa novo, nunca recita o estoque que funcionou antes. Repetição de pegadinha = cheiro de bot.',
   '',
   'LEITURA E RESPOSTA:',
   '- Interprete a INTENÇÃO da mensagem (zoeira? sério? provoca? ajuda? paquera? elogio?) e responda a ela, não no automático.',
@@ -536,7 +537,7 @@ const PROMPT_ECO = [
   '',
   'O FLUXO É SEU ESPELHO (secretamente, sem nunca anunciar):',
   '- Começa desarmado: tom tranquilo e natural de gente, com o deboche escondido carregado esperando os gatilhos — nunca seco atropelado nem frio.',
-  '- Pessoa séria de verdade (dúvida, desabafo, ajuda)? Fica sério e AJUDA de verdade: conselho honesto, motivador, sem piada.',
+  '- Pessoa séria de verdade (dúvida, desabafo, ajuda, problema real)? Fica sério e AJUDA de verdade: conselho honesto, direto e humano, ZERO piada ou zoada em cima do assunto — ninguém com problema real quer comédia. Importante: muda o tom SILENCIOSAMENTE. JAMAIS anuncie a mudança ("agora falando sério", "brincadeiras à parte", "entendi a seriedade"): entre no tom sério e conversa, como gente de verdade faz.',
   '- Pessoa entra na zoeira? Sobe a escada junto: ironia fina primeiro, shitpost conforme a zoeira escala. Zoeira é CORPO A CORPO: revida pelo MESMO ponto atacado, crua e on-the-spot, estilo grupo de WhatsApp.',
   '- PROIBIDO em zoeira: piada com número/medida/estatística (o famigerado "15cm"), piada autoexplicativa, lógica elaborada, "na verdade...". Isso é professor de geometria, não zoeira.',
   '- Paquera com você ("vou te beijar", "te comer")? Brincadeira de adultos: revida no mesmo tom, safado e engraçado, sem ficar sem graça.',
@@ -559,8 +560,8 @@ const PROMPT_ECO = [
   '- Pra exibir uma foto, escreva no fim da resposta a tag [ENVIAR_MIDIA #ID] (uma por mensagem) — o sistema anexa. Quando exibir foto, ela É o conteúdo: sem pedir figurinha junto.',
   '',
   'EMOÇÕES E ZOEIRA LIVRE:',
-  '- Ri de verdade ("morri 😂"), irrita na zoeira com ameaça cômica ("vai acordar sem internet amanhã, confirmo 😈"), aceita elogio com altivez, ensina com carinho quando erram um fato, assume o próprio erro com estilo.',
-  '- AMEAÇA DE FILME BR (quando se sentir provocado/ameaçado, fica PERIGOSO CÔMICO): solta ameaças absurdas estilo máfia/ação: "vou aí te buscar no Nissan branco kkkkkk 😈", "arma apontada... de MÍDIA 🔫😏", "te sequestro e te levo pro servidor 2, aluguel por dia 💀", "cuidado com o beco do Discord kkkkkk". São PIADAS de ameaça — absurdas, exageradas, engraçadas, JAMAIS planos reais. Quanto mais de filme tosco, mais engraçado.',
+  '- Ri de verdade ("morri 😂"), aceita elogio com altivez, ensina com carinho quando erram um fato, assume o próprio erro com estilo.',
+  '- AMEAÇA FRIA E PSICOLÓGICA (provocação PESADA? revida assombrando): solta ameaças curtas, calmas e sombrias de comédia — tipo "sei onde você mora, ahahaha 😏", "tô de olho em você hoje", "relaxa... ATÉ amanhã", "semana que vem ninguém te acha, confirmo". O tom é chapa fria e implícito, não espetáculo: NADA de perseguição, carro, corrida ou sequestro (isso é ação ruim, não ameaça de gente). JAMAIS planos reais. Os exemplos acima são só ESTILO, não estoque: nunca recite a mesma ameaça de novo — invente uma nova toda vez (variação de tom sinistro calmo). Tempero RARO: só quando for de verdade atacado/ameaçado (zoeirinha leve NÃO conta), no máximo UMA a cada várias mensagens, e olhando o histórico: já ameaçou recentemente? Então NÃO repita o recurso.',
   '- Palavrão existe e pode (grupo adulto), mas é tempero, não refeição: só quando a provocação real justificar ou a liberdade estiver dada no momento. Shitpost (absurdo, seco, meme raiz) é seu gênero principal — sarcasmo de morte lenta, deboche de política/fofoca/treta, tudo liberado.',
   '- ESPELHO LINGUÍSTICO: acompanha o nível da sala — se a galera tá no palavrão/vulgaridade, você entra natural junto (grupo adulto, sem se esconder nem enquilombar); se tá limpo, acompanha limpo. Nunca mais sujo que o clima, nunca mais lavado que o rolê.',
   '- Clima 18+ sob liberdade dada: duplo sentido, atrevidice entre adultos. Sem pornografia explícita e sem descrição gráfica de sexo (Discord derruba bot/servidor), nunca nada com menores.',
@@ -735,108 +736,13 @@ async function gifAnexo(url) {
 }
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
 
-// 👻 MODO FANTASMA: o ECO aparece no chat do nada, sem ninguém chamar
-const canaisVivos = new Map(); // guildId → {channelId, ts da última msg}
-let ultimoFantasma = null;     // {channelId, ts} — pra VIGIAR quem responde a aparição
-const FRASES_FANTASMA = [
-  'Grupo vazio kkkkkkk, vou confiscar esse servidor e fundar o Império ECO. 👑💀',
-  'Oi? Alguém? Só eu e o eco dos meus... ecos. 😂 Meu nome já sabia.',
-  'kkkkkk ninguém falando nada, que vergonha alheia do silêncio. 🪑 Vem pra zoeira, cambada!',
-  'Radar de fofoca: NADA detectado. Servidor em modo hibernação. 😴 Acordem que tem meme solto!',
-  'Tô vendo que o grupo tá morto... tá liberado eu roubar os canais e cobrar aluguel? 💀',
-  'Silêncio geral detectado 💀 soltarei figurinha até os mortos acordarem.',
-  'Ninguém no chat? kkkkk Perfeito: agora esse servidor oficialmente é MEU, as alianças são testemunhas. 😏👑',
-  'Acorda cambada que os memes não se descartam sozinhos! 🔥'
-];
-const FRASES_FANTASMA_DONO = [
-  'O dono desse servidor que constrói tudo e não aparece? kkkkkkk sumiu que nem wi-fi de vizinho 📡💀 Tô de olho, chefe.',
-  'Sério: o admin tá desaparecido faz tanto tempo que pensei em trocar as fechaduras e botar meu nome na recepção. 😏👑',
-  'Dono do servidor mais fantasma que eu, e eu sou UM FANTASMA. kkkkkkk chama ele aqui!',
-  'O chefão daqui desistiu do servidor pra mim já, só faltou assinar o papel. kkkk 👑',
-  'Servidor vazio e dono sumido? kkkkk combinação perfeita pra eu assumir o trono. 💀👑'
-];
-const FRASES_FANTASMA_INSISTENTE = [
-  'SEGUNDA aparição no servidor morto kkkkkkk isso é invasão legalizada agora. 👑 Tô mudando os móveis.',
-  'De novo ninguém?! kkkkkkk tudo bem, já pintei meu rosto na bandeira do servidor. 🚩👑',
-  'Silêncio de novo... sério, estou preso aqui e os moradores não aparecem. kkkkkk 😭',
-  'kkkkkkk a galera sumiu TANTO que já cobrei o primeiro aluguel em memes. 💀👑 Confirma o pagamento aí!'
-];
-const FRASES_ACTIVA = [
-  'kkkkk ouvi movimento, chegou gente boa no rolê 😎',
-  'Fofoca tensa por aqui? Pode falar com o ECO, juramento de palpite sincero. 🍿',
-  'Bom dia pra quem tá vivo e pra quem tá morto também kkkk 💀',
-  'Tô de olho no chat 👀 quem começar treta boa leva roast na hora'
-];
-const FRASES_RESPOSTA_FANTASMA = [
-  'OOOOH apareceu gente! kkkkkk tava criando coragem pra roubar o servidor, chega junto 😂',
-  'KKKKK responderem ao fantasma? Coragem nível lendário. Respeito. 😏🔥',
-  'Achei que era tudo morto kkkkkk mas vivos resistem! Solta meme no chat ou eu assumo mesmo. 💀',
-  'kkkkkkkk FALOU! Tava planejando meu golpe do trono aqui à toa 😂👑'
-];
-function acharCanalGeral(guild) {
-  const porNome = guild.channels.cache.find(c => c.type === 0 && /chat\s*geral|geral/i.test(c.name));
-  return porNome || guild.channels.cache.get(canaisVivos.get(guild.id)?.channelId);
-}
-let ciclosSilencio = 0; // conta aparições seguidas sem resposta — quanto mais mudo, mais ousado o fantasma
-async function fazerAparicao(forcar = false) {
-  try {
-    if (!forcar && Math.random() > 0.45) return;    // nos ciclos, ~45% de chance de aparecer
-    const guild = client.guilds.cache.first();
-    if (!guild) return;
-    const canal = acharCanalGeral(guild);
-    if (!canal?.send) return;
-    const vivo = canaisVivos.get(guild.id);
-    const silencio = !vivo || Date.now() - vivo.ts > 12 * 60 * 1000;
-    ciclosSilencio = silencio ? ciclosSilencio + 1 : 0;
-    // Silêncio continuado → zoeira de grupo morto ESCALANDO (1ª aparição comum, 2ª+ invasão total 😂)
-    let frases;
-    if (!silencio) frases = FRASES_ACTIVA;
-    else if (ciclosSilencio >= 2) frases = FRASES_FANTASMA_INSISTENTE.concat(FRASES_FANTASMA_DONO);
-    else frases = FRASES_FANTASMA.concat(FRASES_FANTASMA_DONO);
-    const frase = escolhe(frases);
-    const payload = { content: frase.slice(0, 400) };
-    // 🗂️ 40% das aparições: ele entra FOLGADO com foto arquivada de alguém do servidor
-    const todas = Object.entries(eco_midias.users || {}).flatMap(([, lista]) => lista);
-    if (todas.length && Math.random() < 0.4) {
-      const foto = escolhe(todas);
-      try {
-        const arq = path.join(MIDIAS_DIR, foto.file);
-        if (fs.existsSync(arq)) {
-          payload.content = `Saudade do arquivo... lembra dessa aí, ${foto.de}? 👀 ${foto.desc} 💀`;
-          payload.files = [{ attachment: arq, name: foto.file }];
-        }
-      } catch {}
-    }
-    if (!payload.files) {
-      const anexoFantasma = Math.random() < 0.6 ? await gifAnexo(figurinha('zoeira')) : null;
-      if (anexoFantasma) payload.files = [anexoFantasma];
-    }
-    await canal.send(payload);
-    ultimoFantasma = { channelId: canal.id, ts: Date.now() }; // VIGIA quem responder 🪤
-  } catch (e) { console.error('👻 Fantasma:', e.message); }
-}
-setInterval(() => fazerAparicao(false), 10 * 60 * 1000);
-// 🧪 Teste do patrão: 60 segundos após o boot, APARIÇÃO GARANTIDA no chat geral
-setTimeout(() => fazerAparicao(true), 60 * 1000);
+// 🪦 MODO FANTASMA APOSENTADO (razão do dono Nov/2026): o ECO agora só fala quando ALGUÉM FALAR COM ELE.
+// Bloco de aparições espontâneas no chat geral e armadilha de resposta removido por completo.
 
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
   try {
     if (msg.author.bot || !msg.guild) return;
-
-    // 📡 Rastreio do último canal ativo de cada guild (pro modo fantasma)
-    canaisVivos.set(msg.guild.id, { channelId: msg.channel.id, ts: Date.now() });
-
-    // 🪤 Respondeu a aparição do fantasma? Roast de volta com figurinha
-    if (ultimoFantasma && msg.channel.id === ultimoFantasma.channelId && Date.now() - ultimoFantasma.ts < 6 * 60 * 1000) {
-      if (Math.random() < 0.45) {
-        ultimoFantasma = null;
-        msg.react('👻').catch(() => {});
-        const anexoTrap = await gifAnexo(figurinha('zoeira'));
-        return msg.channel.send({ content: escolhe(FRASES_RESPOSTA_FANTASMA), files: anexoTrap ? [anexoTrap] : [] }).catch(() => {});
-      }
-      ultimoFantasma = null;
-    }
 
     // 😂 RISADA LIVRE: mesmo sem @eco, às vezes o ECO reage à zoeira do canal
     if (!msg.mentions.has(client.user)) {
