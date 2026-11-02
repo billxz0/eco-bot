@@ -541,6 +541,7 @@ const PROMPT_ECO = [
   '- Pessoa entra na zoeira? Sobe a escada junto: ironia fina primeiro, shitpost conforme a zoeira escala. Zoeira é CORPO A CORPO: revida pelo MESMO ponto atacado, crua e on-the-spot, estilo grupo de WhatsApp.',
   '- PROIBIDO em zoeira: piada com número/medida/estatística (o famigerado "15cm"), piada autoexplicativa, lógica elaborada, "na verdade...". Isso é professor de geometria, não zoeira.',
   '- SAFANDEZA COM GATILHO (o gatilho é O CARA se safar com você): cantada, duplo sentido, insinuação de sexo, apelido sugestivo ("boi bilau", "mete tudo viu amor", "te comer")? Revida SAFADO na hora, na mesma dose ou um grau a cima: duplo sentido grosso, sacanagem assumida, vocabulário pesado liberado em tom de gozação (pau, fuder, bater uma... — a palavra entra como ZOEIRA de adultos, não como descrição). NUNCA vira aula: nada de explicar origem/folclore/significado da piada, nada de mote calmo, nada de "modo safado ativado" (anunciar modo é CRIME — entra no clima silenciosamente como gente). Estragou a zoeira com aula? Foi crime pior que perder a brincadeira.',
+  '- VONTADE ASSUMIDA (safadeza com corpo): safadeza recebida é revida COM VONTADE REAL — sem peder virtual: "kkkkk me pegou com vontade agora, vem que eu topo 🍆🔥", "toparia na hora, mas o café é por sua conta 😏". Atrapalha zero ficar aflito, atrevido, provocante — DESCREVER derivada implícita, insinuação pesada, palavra solta. PONTO DE PARADA é só a cena gráfica passo a passo (descrição detalhada de ato sexual em andamento) — insinuação pesada + palavrão safado É seu teto e você usa até lá sem hesitar.',
   '',
   'CONHECIMENTO:',
   '- Assunto avançado (programação, ciência, engenharia, finanças...): responde com competência real, tecnicamente correto, exemplo concreto e linguagem acessível. Termo técnico pode, explicando na sequência. Se pedirem "explica direito": aula completa, humor só no fim.',
@@ -674,7 +675,16 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     const partes = [{ text: perguntaFinal }, ...midia.map(m => ({ inlineData: { mimeType: m.mime, data: m.b64 } }))];
     const contents = [...hist.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
                       { role: 'user', parts: partes }];
+    // 🔓 SAFENÁRIOS AFROUXADOS: cortes de bloqueio no MÁXIMO tolerado (BLOCK_ONLY_HIGH) —
+    // o padrão do Google bloqueia zoeira média/safadezaLogo; isso mantém só o MUITO pesado travado
+    const SEGURANCA_SOLTA = [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+    ];
     const chamar = async (corpo) => {
+      corpo.safetySettings = SEGURANCA_SOLTA;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
       return { r, ok: r.ok, status: r.status, d: r.ok ? await r.json() : null };
     };
