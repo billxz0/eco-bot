@@ -885,12 +885,25 @@ async function enviarWall(canal, tipo, tema = '') {
     const cat = /anime/i.test(tema) ? '010' : '100';
     let url = `https://wallhaven.cc/api/v1/search?categories=${cat}&purity=100&sorting=random&atleast=${min}`;
     if (tema) url += `&q=${encodeURIComponent(tema)}`;
-    const q = await fetch(url, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null);
-    const listaBruta = q?.data || [];
-    // 🔍 QUALIDADE GARANTIDA: só passa quem a fonte JÁ garante ter Full HD de verdade (dimensões oficiais)
-    const hd = listaBruta.filter(x => (x.width || 0) >= minW && (x.height || 0) >= minH);
+    // 🔍 FORMATO GARANTIDO: a fonte declara dimension_x/dimension_y + ratio oficial.
+    // PC: monitor Full HD (≥1920x1080, aspecto 16:9 até ultrawide leve) | Mobile: tela de celular (≥1080x1920, vertical 9:16+)
+    const passaCrivo = (x) => {
+      const a = x.ratio ? parseFloat(x.ratio) : ((x.dimension_x || 0) / (x.dimension_y || 1));
+      if ((x.dimension_x || 0) < minW || (x.dimension_y || 0) < minH) return false;
+      return tipo === 'mobile' ? (a >= 0.45 && a <= 0.65) : (a >= 1.5 && a <= 2.45);
+    };
+    // 📚 A fonte anônima solta 24 por página — temas específicos podem não ter o formato certo na 1ª página:
+    // varre até 3 páginas juntando candidatos HD antes de render (sai na primeira que tiver 4+).
+    const listaBruta = [], hd = [];
+    for (let page = 1; page <= 3; page++) {
+      const lote = await fetch(`${url}&page=${page}`, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null).then(j => (j && j.data) || []);
+      if (!lote.length) break;
+      for (const x of lote) { if (passaCrivo(x)) hd.push(x); }
+      listaBruta.push(...lote);
+      if (hd.length >= 4) break;
+    }
     const lista = hd.length ? hd : listaBruta;
-    relata({ etapa: 'busca', achados: lista.length, hd: hd.length, fonteOk: !!q });
+    relata({ etapa: 'busca', achados: listaBruta.length, hdCandidatos: hd.length });
     if (!lista.length) { relata({ etapa: 'vazio' }); return canal.send(`🖼️ Acabou o estoque de **${tema || 'aleatório'}** agora — tenta outro tema ou pede de novo em segundos! 💀`).catch(() => {}); }
     const item = escolhe(lista.slice(0, 8));
     const img = await fetch(item.path);
@@ -899,7 +912,7 @@ async function enviarWall(canal, tipo, tema = '') {
     if (buf.length < 80000 || buf.length > 9.5 * 1024 * 1024) { relata({ etapa: 'pesoInvalido', bytes: buf.length }); return canal.send('🖼️ Essa veio estragada, tenta de novo! 💀').catch(() => {}); }
     const ext = ((item.path.split('.').pop() || 'jpg').match(/[a-z0-9]{2,4}/i) || ['jpg'])[0].toLowerCase();
     const msg = tipo === 'mobile' ? '📱 Segura a imagem → defini como fundo do celular!' : '🖥️ Botão direito na imagem → defini como papel de parede!';
-    relata({ etapa: 'entregue', bytes: buf.length, res: `${item.width}x${item.height}` });
+    relata({ etapa: 'entregue', bytes: buf.length, res: `${item.dimension_x}x${item.dimension_y}` });
     return canal.send({ content: msg, files: [{ attachment: buf, name: `eco-wall-${Date.now()}.${ext}` }] }).catch(() => {});
   } catch (e) { relata({ etapa: 'erro', erro: (e && e.message) || '?', erroMsg: true }); console.error('🖼️ Wall:', e.message); }
 }
