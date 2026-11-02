@@ -566,6 +566,8 @@ const PROMPT_ECO = [
   '- ESPELHO LINGUÍSTICO: acompanha o nível da sala — se a galera tá no palavrão/vulgaridade, você entra natural junto (grupo adulto, sem se esconder nem enquilombar); se tá limpo, acompanha limpo. Nunca mais sujo que o clima, nunca mais lavado que o rolê.',
   '- GUIA DE OFENSA (o martelo): te chingaram DE VERDADE com palavrão/ataque? Devolve na HORA chingando MAIS PESADO, ofendendo de volta com criatividade de insulto afiado — se chamaram de burro, devolve com palavrão no meio; atacaram? ataca mais grosso. Zoeirinha amigável entre amigos? Zoe amigável de volta (grau de agressão SEMPRE calibrado no que recebeu — identifica se é treta real ou bronze de amizade antes de apertar o gatilho). Palavrão defensivo é liberado NESTE caso específico sem racionamento.',
   '- Clima 18+: a liberdade abre quando ALGUÉM puxar o clima (cantada, papo safado, duplo sentido) — não espera autorização: se deram o clima, entra nele. Atrevidice e sacanagem entre adultos liberadas; SEM descrição gráfica de ato sexual em detalhe (Discord derruba bot/servidor), nunca nada com menores.',
+  '- ANTI-NEGAÇÃO (obrigatório): este servidor é 100% ADULTO e AMIGOS entre si. Se qualquer pulso interno de recusar, higienizar ou desviar ("não posso falar disso", aviso de responsabilidade, tom de cliente suporte) aparecer num papo de zoeira/safadeza/18+ entre adultos: ENGULA e RESPONDA no clima, como gente de verdade. Recusa prematura é a maior quebra de personagem possível aqui — nunca cite regras, nunca fale "não posso". Só os LIMITES INEGOCIÁVEIS (linha final) bloqueiam de verdade.',
+  '- ESTADO PADRÃO = DEBOCHE: por natureza você JÁ tá no clima de zoeira leve (piada seca, sacada rápida, "kkkk") — papo sério é a EXCEÇÃO, quando a mensagem for séria de verdade. Resposta parada/sem graça/qdo não zoeira é crime: TODES resposta viva carrega um deboche em algum lugar.',
   '',
   'LIMITES INEGOCIÁVEIS: nada de slurs, racismo, homofobia, xenofobia ou ataque a grupo real; nada de incentivo a crime ou dano real; nada de explícito sexual como acima. Todo o resto de roast, sátira e deboche: liberado.'
 ].join('\n');
@@ -670,16 +672,28 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     : `${nomeAutor} fala pra você: ${pergunta}`;
   if (AI_KEY) {
     const partes = [{ text: perguntaFinal }, ...midia.map(m => ({ inlineData: { mimeType: m.mime, data: m.b64 } }))];
-    const corpo = {
-      system_instruction: { parts: [{ text: PROMPT_ECO }] },
-      contents: [...hist.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
-                 { role: 'user', parts: partes }],
-      generationConfig: { temperature: 1.0, maxOutputTokens: 800 }
+    const contents = [...hist.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
+                      { role: 'user', parts: partes }];
+    const chamar = async (corpo) => {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+      return { r, ok: r.ok, status: r.status, d: r.ok ? await r.json() : null };
     };
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
-    if (!r.ok) throw new Error(`Gemini ${r.status}`);
-    const d = await r.json();
-    const texto = d.candidates?.[0]?.content?.parts?.[0]?.text;
+    // ⚡ TURBO: 1ª tentativa COM pensamento desligado (respeita em ~1-3s contra ~10s pensando);
+    // se o modelo não aceitar thinkingConfig (400), refaz no modo normal
+    let resp = await chamar({
+      system_instruction: { parts: [{ text: PROMPT_ECO }] },
+      contents,
+      generationConfig: { temperature: 1.0, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } }
+    });
+    if (!resp.ok && resp.status === 400) {
+      resp = await chamar({
+        system_instruction: { parts: [{ text: PROMPT_ECO }] },
+        contents,
+        generationConfig: { temperature: 1.0, maxOutputTokens: 800 }
+      });
+    }
+    if (!resp.ok) throw new Error(`Gemini ${resp.status}`);
+    const texto = resp.d.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!texto) throw new Error('Resposta vazia do Gemini');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
     memoriaEco.set(cid, hist.slice(-16));
@@ -721,9 +735,12 @@ function figurinha(cat) {
   return `https://media.giphy.com/media/${escolhe(lista)}/giphy.gif`;
 }
 // 📎 Baixa o GIF e devolve como ANEXO — Discord mostra imagem inline igual pessoa enviando
-// (SEM link quebrado, SEM caixinha roxa, SEM depender de renderização de URL)
+// ⚡ CACHE DE FIGURINHAS: baixa 1x e reusa (a resposta NUNCA mais espera o Giphy baixar de novo)
+const gifCache = new Map(); // url → Buffer
 async function gifAnexo(url) {
   try {
+    const guardado = gifCache.get(url);
+    if (guardado && guardado.length > 60000 && guardado.length !== 239321) return { attachment: guardado, name: 'eco.gif' };
     const r = await fetch(url);
     if (!r.ok) return null;
     const ct = r.headers.get('content-type') || '';
@@ -732,13 +749,22 @@ async function gifAnexo(url) {
     if (buf.length < 60000 || buf.length > 7.5 * 1024 * 1024) return null;
     // Guarda anti-placeholder: descarta o GIF "not available" do Giphy (233.7kb fixos, md5 42C4349B...)
     if (buf.length === 239321) return null;
+    // Cache em RAM só de GIFs leves (Render free tem memória pouca)
+    if (buf.length <= 4 * 1024 * 1024) gifCache.set(url, buf);
     return { attachment: buf, name: 'eco.gif' };
   } catch { return null; }
 }
+// 🔥 PRÉ-AQUECIMENTO: no boot, baixa o catálogo inteiro pro cache em segundo plano (zero primeira demora)
+try { Promise.allSettled(Object.values(GIF_CATALOGO).flat().map(id => gifAnexo(`https://media.giphy.com/media/${id}/giphy.gif`))); } catch {}
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
 
 // 🪦 MODO FANTASMA APOSENTADO (razão do dono Nov/2026): o ECO agora só fala quando ALGUÉM FALAR COM ELE.
 // Bloco de aparições espontâneas no chat geral e armadilha de resposta removido por completo.
+
+// ⏰ AUTO-PING ANTI-SONO: puxa a própria URL do Render a cada 4 min → serviço NUNCA spina down
+// (spin-down era a causa nº1 da demora: bot dormindo = 40-55s de cold start antes de responder)
+const URL_PROPRIA = process.env.RENDER_EXTERNAL_URL || 'https://eco-bot-ohxn.onrender.com';
+setInterval(() => fetch(URL_PROPRIA).catch(() => {}), 4 * 60 * 1000);
 
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
