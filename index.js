@@ -664,6 +664,9 @@ async function buscarClima(cidade) {
   } catch { return null; }
 }
 
+let configSeguranca = 'AUTO'; // 'AUTO' = testando BLOCK_NONE; array = trava vencedora; null = sem custom
+let evitarThinking = false;   // se o modelo rejeitar thinkingConfig, fica falso pra sempre no boot
+
 async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
   const hist = (memoriaEco.get(cid) || []).slice(-14);
   const perguntaFinal = realInfo
@@ -675,33 +678,51 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
                       { role: 'user', parts: partes }];
     // 🔓 SAFENÁRIOS AFROUXADOS: cortes de bloqueio no MÁXIMO tolerado (BLOCK_ONLY_HIGH) —
     // o padrão do Google bloqueia zoeira média/safadezaLogo; isso mantém só o MUITO pesado travado
-    const SEGURANCA_SOLTA = [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
-    ];
+    // 🔓 ANTICENSURA COM AUTO-ADAPTAÇÃO: tenta DERRUBAR OS FILTROS (BLOCK_NONE). Se a chave não
+    // tem grau pra isso, a cadeia detecta UMA vez, memoriza e dali em diante usa o máximo possível
+    // ('AUTO' = testando BLOCK_NONE; array = config travada; null = sem safetySettings custom)
+    if (!Array.isArray(configSeguranca) && configSeguranca !== null) {
+      configSeguranca = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+      ];
+    }
+    const URL_GEM = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`;
     const chamar = async (corpo) => {
-      corpo.safetySettings = SEGURANCA_SOLTA;
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO_GEMINI}:generateContent?key=${AI_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+      if (Array.isArray(configSeguranca)) corpo.safetySettings = configSeguranca;
+      const r = await fetch(URL_GEM, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
       return { r, ok: r.ok, status: r.status, d: r.ok ? await r.json() : null };
     };
-    // 🧠 RACIONAMENTO SOB MEDIDA: zoeira curta = turbo sem pensamento (~1-3s);
-    // pergunta real / com interrogação = pensamento completo (interpretação afiada, como antes)
-    const pensar = pergunta.length > 110 || /\?/.test(pergunta) || /(como|por que|porque|qual|quais|quando|quem|onde|explica|ensina|diferen|faz sentido|melhor|verdade|serio)/i.test(pergunta);
-    let resp = await chamar({
-      system_instruction: { parts: [{ text: PROMPT_ECO }] },
-      contents,
-      generationConfig: pensar
-        ? { temperature: 0.8, maxOutputTokens: 800 }
-        : { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 256 } }
-    });
+    // ⚡ PISTA TRIPLA: ultra-curta = tiro instantâneo (zero pensamento); média = micro (256);
+    // pergunta real/longa = raciocínio completo (interpretação afiada)
+    const curta = pergunta.length < 40 && !/\?/.test(pergunta);
+    const pensar = pergunta.length > 140 || /(por que|porque|explica|me ensina|diferença|como faz|como funciona|qual (é|e|são)|qual o melhor)/i.test(pergunta);
+    const cfgPensar = { temperature: 0.8, maxOutputTokens: 800 };
+    const cfgMedia = { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 256 } };
+    const cfgCurta = { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } };
+    const base = { system_instruction: { parts: [{ text: PROMPT_ECO }] }, contents };
+    let resp = await chamar({ ...base, generationConfig: pensar ? cfgPensar : curta ? (evitarThinking ? cfgPensar : cfgCurta) : (evitarThinking ? cfgPensar : cfgMedia) });
     if (!resp.ok && resp.status === 400) {
-      resp = await chamar({
-        system_instruction: { parts: [{ text: PROMPT_ECO }] },
-        contents,
-        generationConfig: { temperature: 0.8, maxOutputTokens: 800 }
-      });
+      // 2ª tentativa: sem thinkingConfig (campo às vezes rejeitado). Se passar, a causa era o campo.
+      resp = await chamar({ ...base, generationConfig: cfgPensar });
+      if (resp.ok) {
+        if (curta) evitarThinking = true; // campo thinking foi recusado: não repete a partir de agora
+      } else if (resp.status === 400) {
+        // 3ª tentativa: SEM config de segurança custom (filtros default do Google) + trava de vez
+        const r3 = await fetch(URL_GEM, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system_instruction: base.system_instruction, contents, generationConfig: cfgPensar }) });
+        resp = { r: r3, ok: r3.ok, status: r3.status, d: r3.ok ? await r3.json() : null };
+        if (resp.ok) configSeguranca = null;
+      }
+    } else if (resp.ok && configSeguranca === 'AUTO') {
+      // 1ª tentativa passou COM BLOCK_NONE → trava a vitória (mesma config dali em diante, sem re-teste)
+      configSeguranca = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+      ];
     }
     if (!resp.ok) throw new Error(`Gemini ${resp.status}`);
     let texto = resp.d?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -785,7 +806,7 @@ const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '�
 // ⏰ AUTO-PING ANTI-SONO: puxa a própria URL do Render a cada 4 min → serviço NUNCA spina down
 // (spin-down era a causa nº1 da demora: bot dormindo = 40-55s de cold start antes de responder)
 const URL_PROPRIA = process.env.RENDER_EXTERNAL_URL || 'https://eco-bot-ohxn.onrender.com';
-setInterval(() => fetch(URL_PROPRIA).catch(() => {}), 4 * 60 * 1000);
+setInterval(() => fetch(URL_PROPRIA).catch(() => {}), 3 * 60 * 1000);
 
 // Comandos de casamento/zoa + chat livre com @eco
 client.on('messageCreate', async (msg) => {
