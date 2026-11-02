@@ -813,9 +813,13 @@ try { Promise.allSettled(Object.values(GIF_CATALOGO).flat().map(id => gifAnexo(`
 // PC → Full HD horizontal | MOBILE → Full HD vertical | LIVE PC/MOBILE → MP4 (precisa PEXELS_API_KEY)
 const cooldownWall = new Map(); // channelId → ts (anti-spam 8s por canal)
 function tipoWall(canal) {
+  if (canal && canal.type !== undefined && canal.type !== 0) return null; // só canal de TEXTO
   const n = ((canal && canal.name) || '').toLowerCase();
-  if (!/wallpaper|papel de parede|wpp/.test(n)) return null;
-  const live = /live|video|vídeo/.test(n);
+  const pai = (canal && canal.parent && canal.parent.name) || '';
+  // ativa em: canal com wallpaper/wpp no nome OU qualquer canal dentro da CATEGORIA wallpaper
+  const eAba = /wallpaper|papel de parede|wpp/.test(n) || /wallpaper|papel de parede/i.test(pai);
+  if (!eAba) return null;
+  const live = /live/.test(n);
   const mobile = /mobile|celular|phone/.test(n);
   if (live) return mobile ? 'live_mobile' : 'live_pc';
   return mobile ? 'mobile' : 'pc';
