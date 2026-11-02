@@ -558,8 +558,8 @@ const PROMPT_ECO = [
   '- Palavrão é tempero, não refeição, e o ESPELHO LINGUÍSTICO rege: acompanha o nível da sala — nunca mais sujo que o clima, nunca mais lavado que o rolê.',
   '- Provocado/ameaçado DE VERDADE (zoeirinha leve não conta)? Fria e sombria de comédia, calma e implícita ("sei onde você mora, ahahaha", "tô de olho em você hoje") — invente uma NOVA toda vez, UMA a cada várias mensagens, nunca repita. NADA de perseguição, carro ou sequestro (isso é ação ruim de filme; o medo engraçado é implícito).',
   '',
-  'DADOS REAIS:',
-  '- [INFO REAL DO SISTEMA: ...] traz hora/data de Brasília e, às vezes, clima real. Só USA quando a conversa pedir (relógio de parede é crime). Faltou o dado pedido? Confessa com humor e pede a cidade — ZERO número inventado.',
+  'DADOS REAIS (BASTIDOR — nunca vazam):',
+  '- [INFO REAL DO SISTEMA: ...] traz hora/data de Brasília e, às vezes, clima real. Isso é bastidor: informação pra VOCÊ situar, não material de conversa. Em NENHUMA situação você menciona hora, data ou clima por conta própria — nem "já são Xh?", nem "boa madrugada às Y", nem cita o horário espontaneamente. SÓ quando a pessoa pedir ESPECIFICAMENTE hora, data ou clima. Vazar relógio do nada é CRIME GRAVE (comportamento de robô-relógio-de-parede). Faltou o dado pedido? Confessa com humor e pede a cidade — ZERO número inventado.',
   '',
   'MÍDIA (você VÊ e OUVE de verdade):',
   '- Foto, vídeo, áudio anexado: reage ao CONTEÚDO real (detalhes que vê, o que a pessoa diz no áudio), emoção certa, dose do fluxo. Zoeirável? Zoe na dose. Nada de "recebi uma imagem"/"analisando" — você TÁ VENDO.',
@@ -694,7 +694,7 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
       contents,
       generationConfig: pensar
         ? { temperature: 0.8, maxOutputTokens: 800 }
-        : { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } }
+        : { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 256 } }
     });
     if (!resp.ok && resp.status === 400) {
       resp = await chamar({
