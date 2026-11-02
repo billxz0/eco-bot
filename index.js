@@ -703,7 +703,17 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
       });
     }
     if (!resp.ok) throw new Error(`Gemini ${resp.status}`);
-    const texto = resp.d.candidates?.[0]?.content?.parts?.[0]?.text;
+    let texto = resp.d?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // 🛡️ MURO DO GOOGLE: resposta cortada pelo filtro (bloqueio/SAFETY) → re-tenta 1x em tom
+    // safo LEVE (duplo sentido, sem palavrão sexual explícito) pra nunca deixar o chat no vazio
+    const bloqueado = !texto && (resp.d?.promptFeedback?.blockReason || resp.d?.candidates?.[0]?.finishReason === 'SAFETY');
+    if (bloqueado) {
+      const pedeSafoLeve = { contents: [...contents], system_instruction: { parts: [{ text: PROMPT_ECO }] }, generationConfig: { temperature: 1.0, maxOutputTokens: 800 } };
+      pedeSafoLeve.contents[pedeSafoLeve.contents.length - 1].parts[0].text += '\n\n(SUA RESPOSTA ANTERIOR FOI CORTADA PELO FILTRO — re-responda o MESMO clima safado mas em tom de DUPLO SENTIDO e atrevidice leve, SEM palavra sexual explícita, corto e zoeiro igual antes.)';
+      const resp2 = await chamar(pedeSafoLeve);
+      texto = resp2.d?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!texto) throw new Error('BLOQUEADO');
+    }
     if (!texto) throw new Error('Resposta vazia do Gemini');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
     memoriaEco.set(cid, hist.slice(-16));
@@ -922,6 +932,14 @@ client.on('messageCreate', async (msg) => {
       }
       return msg.reply({ content: respostaFinal.slice(0, 1600), files }).catch(() => {});
     } catch (e) {
+      if (e.message === 'BLOQUEADO') {
+        const deflesao = escolhe([
+          'kkkkk ô safado, esse aí passou do meu rodízio 😏 trás na dose duas que eu topo 💀',
+          'kkkk morri com o pedido, mas esse aí deu BRETE aqui 😂 re-manda mais afiado!',
+          '🌶️ kkkkk tá cara de fogo hoje hein... esse nem eu seguro, manda outro!'
+        ]);
+        return msg.reply(deflesao).catch(() => {});
+      }
       if (e.message === 'SEM_CHAVE') {
         return msg.reply(`🧠 Meu cérebro grátis ainda não foi plugado, ${autorTxt}!\nColoca uma **GEMINI_API_KEY** grátis no Render → Environment (aqui: aistudio.google.com/apikey) e eu viro o Bill Gates dos memes. 🤖💰`).catch(() => {});
       }
