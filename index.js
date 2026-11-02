@@ -860,6 +860,27 @@ function traduzTema(t) {
   const parts = limpa.split(' ').map(w => MAPA_TEMA[w] || w);
   return [...new Set(parts.filter(Boolean))].join(' ').slice(0, 40);
 }
+// 🎨 CORES ESCOLHÍVEIS: "wallpaper anime roxo" → pauta anime + filtro de cor nativo da fonte.
+// (hexas OFICIAIS da paleta do Wallhaven — extraídos da página de ajuda da API, testados ao vivo)
+const MAPA_COR = {
+  roxo: '993399', roxos: '993399', violeta: '663399', lilas: '663399', lilás: '663399',
+  azul: '0066cc', azuis: '0066cc', marinho: '333399', ciano: '0099cc', turquesa: '66cccc',
+  verde: '77cc33', verdes: '77cc33', vermelho: 'cc0000', vermelhos: 'cc0000',
+  laranja: 'ff9900', laranjas: 'ff9900', amarelo: 'ffcc33', amarelos: 'ffcc33', dourado: 'ffcc33', ouro: 'ffcc33',
+  rosa: 'ea4c88', rosas: 'ea4c88', magenta: 'ea4c88', branco: 'ffffff', branca: 'ffffff',
+  preto: '000000', preta: '000000', cinza: '999999', cinzas: '999999', marrom: '996633', cafe: '996633', café: '996633'
+};
+function lerTema(frase) {
+  const limpa = (frase || '').toLowerCase().replace(/[^\w\sáàâãéêíóôõúç]/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!limpa) return { tema: '', cor: '' };
+  let cor = '';
+  const palavras = limpa.split(' ').filter(w => {
+    if (MAPA_COR[w] && !cor) { cor = MAPA_COR[w]; return false; }
+    return true;
+  });
+  const tema = [...new Set(palavras.map(w => MAPA_TEMA[w] || w).filter(Boolean))].join(' ').slice(0, 40);
+  return { tema, cor };
+}
 const cooldownWall = new Map(); // channelId → ts (anti-spam 8s por canal)
 function tipoWall(canal) {
   if (canal && canal.type !== undefined && canal.type !== 0) return null; // só canal de TEXTO
@@ -872,8 +893,8 @@ function tipoWall(canal) {
   const mobile = /mobile|celular|phone/.test(n);
   return mobile ? 'mobile' : 'pc';
 }
-async function enviarWall(canal, tipo, tema = '') {
-  const relata = (o) => { try { pulsoWall({ canal: canal.name || '?', tipo, tema, ...o }); } catch {} };
+async function enviarWall(canal, tipo, tema = '', corHex = '') {
+  const relata = (o) => { try { pulsoWall({ canal: canal.name || '?', tipo, tema, cor: corHex || '', ...o }); } catch {}; };
   try {
     const agora = Date.now();
     const ultima = cooldownWall.get(canal.id) || 0;
@@ -894,9 +915,13 @@ async function enviarWall(canal, tipo, tema = '') {
     const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
     const min = tipo === 'mobile' ? '1080x1920' : '1920x1080';
     const minW = tipo === 'mobile' ? 1080 : 1920, minH = tipo === 'mobile' ? 1920 : 1080;
-    const cat = /anime/i.test(tema) ? '010' : '100';
+    // 🎌 pauta ANIME: "anime" vira CATEGORIA própria e NÃO entra no query (ele sujava e esvaziava o carrinho)
+    const anime = /\banime|\bmanga|\bmangá/i.test(tema);
+    const cat = anime ? '010' : '100';
+    const temaQ = tema.replace(/\banimes?\b|\bmangás?\b|\bmangá\b/gi, '').trim();
     let url = `https://wallhaven.cc/api/v1/search?categories=${cat}&purity=100&sorting=random&atleast=${min}`;
-    if (tema) url += `&q=${encodeURIComponent(tema)}`;
+    if (corHex) url += `&colors=${corHex}`;
+    if (temaQ) url += `&q=${encodeURIComponent(temaQ)}`;
     // 🔍 FORMATO GARANTIDO: a fonte declara dimension_x/dimension_y + ratio oficial.
     // PC: monitor Full HD (≥1920x1080, aspecto 16:9 até ultrawide leve) | Mobile: tela de celular (≥1080x1920, vertical 9:16+)
     const passaCrivo = (x) => {
@@ -904,10 +929,10 @@ async function enviarWall(canal, tipo, tema = '') {
       if ((x.dimension_x || 0) < minW || (x.dimension_y || 0) < minH) return false;
       return tipo === 'mobile' ? (a >= 0.45 && a <= 0.65) : (a >= 1.5 && a <= 2.45);
     };
-    // 📚 A fonte anônima solta 24 por página — temas específicos podem não ter o formato certo na 1ª página:
-    // varre até 3 páginas juntando candidatos HD antes de render (sai na primeira que tiver 4+).
+    // 📚 A fonte anônima solta 24 por página — tema+cor juntos podem não ter o formato certo na 1ª página:
+    // varre até 4 páginas juntando candidatos HD (sai na primeira que tiver 4+).
     const listaBruta = [], hd = [];
-    for (let page = 1; page <= 3; page++) {
+    for (let page = 1; page <= 4; page++) {
       const lote = await fetch(`${url}&page=${page}`, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null).then(j => (j && j.data) || []);
       if (!lote.length) break;
       for (const x of lote) { if (passaCrivo(x)) hd.push(x); }
@@ -915,17 +940,29 @@ async function enviarWall(canal, tipo, tema = '') {
       if (hd.length >= 4) break;
     }
     const lista = hd.length ? hd : listaBruta;
-    relata({ etapa: 'busca', achados: listaBruta.length, hdCandidatos: hd.length });
-    if (!lista.length) { relata({ etapa: 'vazio' }); return canal.send(`🖼️ Acabou o estoque de **${tema || 'aleatório'}** agora — tenta outro tema ou pede de novo em segundos! 💀`).catch(() => {}); }
-    const item = escolhe(lista.slice(0, 8));
-    const img = await fetch(item.path);
-    if (!img.ok) { relata({ etapa: 'downloadFalhou', status: img.status }); return canal.send('🖼️ Essa veio rachada da fábrica, tenta de novo! 😂').catch(() => {}); }
-    const buf = Buffer.from(await img.arrayBuffer());
-    if (buf.length < 80000 || buf.length > 9.5 * 1024 * 1024) { relata({ etapa: 'pesoInvalido', bytes: buf.length }); return canal.send('🖼️ Essa veio estragada, tenta de novo! 💀').catch(() => {}); }
-    const ext = ((item.path.split('.').pop() || 'jpg').match(/[a-z0-9]{2,4}/i) || ['jpg'])[0].toLowerCase();
-    const msg = tipo === 'mobile' ? '📱 Segura a imagem → defini como fundo do celular!' : '🖥️ Botão direito na imagem → defini como papel de parede!';
-    relata({ etapa: 'entregue', bytes: buf.length, res: `${item.dimension_x}x${item.dimension_y}` });
-    return canal.send({ content: msg, files: [{ attachment: buf, name: `eco-wall-${Date.now()}.${ext}` }] }).catch(() => {});
+    relata({ etapa: 'busca', achados: listaBruta.length, hdCandidatos: hd.length, temaQ, cat });
+    if (!lista.length) {
+      relata({ etapa: 'vazio' });
+      const nomeTema = temaQ || (anime ? 'anime' : 'aleatório');
+      const nomeCor = corHex ? ' no tom de cor pedido' : '';
+      return canal.send(`🖼️ O estoque de **${nomeTema}${nomeCor}** tá minguado — tenta outro tema${corHex ? '/cor' : ''} ou pede de novo em segundos! 💀`).catch(() => {});
+    }
+    // ♻️ RETRY DE VERDADE: um candidato estragado NUNCA mata o pedido — prova até 6 balaços
+    let entregue = false;
+    const balaços = [...lista].sort(() => Math.random() - 0.5).slice(0, 6);
+    for (const item of balaços) {
+      const img = await fetch(item.path).catch(() => null);
+      if (!img || !img.ok) { relata({ etapa: 'candidatoFalhou', status: img ? img.status : 'sem-resposta' }); continue; }
+      const buf = Buffer.from(await img.arrayBuffer());
+      if (buf.length < 80000 || buf.length > 9.5 * 1024 * 1024) { relata({ etapa: 'candidatoFora', bytes: buf.length }); continue; }
+      const ext = ((item.path.split('.').pop() || 'jpg').match(/[a-z0-9]{2,4}/i) || ['jpg'])[0].toLowerCase();
+      const msg = tipo === 'mobile' ? '📱 Segura a imagem → defini como fundo do celular!' : '🖥️ Botão direito na imagem → defini como papel de parede!';
+      relata({ etapa: 'entregue', bytes: buf.length, res: `${item.dimension_x}x${item.dimension_y}` });
+      await canal.send({ content: msg, files: [{ attachment: buf, name: `eco-wall-${Date.now()}.${ext}` }] }).catch(() => {});
+      entregue = true;
+      break;
+    }
+    if (!entregue) { relata({ etapa: 'falhaGeral' }); return canal.send('🖼️ A fábrica me mandou toda essa leva torta — pede de novo num segundo que eu escolho melhor dessa vez! 😂').catch(() => {}); }
   } catch (e) { relata({ etapa: 'erro', erro: (e && e.message) || '?', erroMsg: true }); console.error('🖼️ Wall:', e.message); }
 }
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
@@ -949,8 +986,8 @@ client.on('messageCreate', async (msg) => {
     const tw = tipoWall(msg.channel);
     if (tw && /wallpapers?/i.test(msg.content)) {
       const mTema = msg.content.match(/wallpapers?\s+(.+)/i);
-      const tema = mTema ? traduzTema(mTema[1]) : '';
-      return enviarWall(msg.channel, tw, tema);
+      const lido = mTema ? lerTema(mTema[1]) : { tema: '', cor: '' };
+      return enviarWall(msg.channel, tw, lido.tema, lido.cor);
     }
 
     // 😂 RISADA LIVRE: mesmo sem @eco, às vezes o ECO reage à zoeira do canal
