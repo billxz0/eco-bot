@@ -834,9 +834,8 @@ function tipoWall(canal) {
   // ativa em: canal com wallpaper/wpp no nome OU qualquer canal dentro da CATEGORIA wallpaper
   const eAba = /wallpaper|papel de parede|wpp/.test(n) || /wallpaper|papel de parede/i.test(pai);
   if (!eAba) return null;
-  const live = /live/.test(n);
+  if (/live/.test(n)) return null; // live wallpaper aposentado (fonte sem filtro de tema)
   const mobile = /mobile|celular|phone/.test(n);
-  if (live) return mobile ? 'live_mobile' : 'live_pc';
   return mobile ? 'mobile' : 'pc';
 }
 async function enviarWall(canal, tipo, tema = '') {
@@ -846,42 +845,21 @@ async function enviarWall(canal, tipo, tema = '') {
     cooldownWall.set(canal.id, agora);
     await canal.sendTyping().catch(() => {});
     const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
-    if (tipo === 'pc' || tipo === 'mobile') {
-      const min = tipo === 'pc' ? '1920x1080' : '1080x1920';
-      const cat = /anime/i.test(tema) ? '010' : '100';
-      let url = `https://wallhaven.cc/api/v1/search?categories=${cat}&purity=100&sorting=random&atleast=${min}`;
-      if (tema) url += `&q=${encodeURIComponent(tema)}`;
-      const q = await fetch(url, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null);
-      const lista = q?.data || [];
-      if (!lista.length) return canal.send(`🖼️ Acabou o estoque de **${tema || 'aleatório'}** agora — tenta outro tema ou pede de novo em segundos! 💀`).catch(() => {});
-      const item = escolhe(lista.slice(0, 8));
-      const img = await fetch(item.path);
-      if (!img.ok) return canal.send('🖼️ Essa veio rachada da fábrica, tenta de novo! 😂').catch(() => {});
-      const buf = Buffer.from(await img.arrayBuffer());
-      if (buf.length < 30000 || buf.length > 9.5 * 1024 * 1024) return canal.send('🖼️ Essa veio estragada, tenta de novo! 💀').catch(() => {});
-      const ext = ((item.path.split('.').pop() || 'jpg').match(/[a-z0-9]{2,4}/i) || ['jpg'])[0].toLowerCase();
-      const msg = `${tema ? `Tema: **${tema}** — ` : ''}${tipo === 'pc' ? '💻 Full HD pro teu PC — botão direito → definir como papel de parede! 🔥' : '📱 Full HD na vertical pro teu celular — segura a imagem → baixar/definir como fundo! 🔥'}`;
-      return canal.send({ content: msg, files: [{ attachment: buf, name: `eco-wall-${Date.now()}.${ext}` }] }).catch(() => {});
-    }
-    // LIVE: MP4 SEM CHAVE via Mixkit (horizontal = catálogo todo; vertical = categoria própria)
-    const murl = tipo === 'live_mobile' ? 'https://mixkit.co/free-stock-video/vertical/' : 'https://mixkit.co/free-stock-video/';
-    const finalUrl = tema ? `${murl}?q=${encodeURIComponent(tema)}` : murl;
-    const html = await fetch(finalUrl, { headers: UA }).then(r => r.ok ? r.text() : null).catch(() => null);
-    const ids = [...(html || '').matchAll(/assets\.mixkit\.co\/videos\/(\d+)\/\1/g)].map(m => m[1]).filter((v, i, a) => a.indexOf(v) === i);
-    if (!ids.length) return canal.send(`🎬 Sem live de **${tema || 'qualquer coisa'}** no estoque agora — tenta outro tema em segundos! 💀`).catch(() => {});
-    const id = escolhe(ids.slice(0, 12));
-    let buf = null;
-    for (const qv of ['720', '360']) {
-      try {
-        const dl = await fetch(`https://assets.mixkit.co/videos/${id}/${id}-${qv}.mp4`, { headers: UA });
-        if (!dl.ok) continue;
-        const b = Buffer.from(await dl.arrayBuffer());
-        if (b.length > 100000 && b.length <= 24 * 1024 * 1024) { buf = b; break; }
-      } catch {}
-    }
-    if (!buf) return canal.send('🎬 Essa live veio pesada demais pro Discord, tenta de novo! 💀').catch(() => {});
-    const msg = `${tema ? `Tema: **${tema}** — ` : ''}${tipo === 'live_pc' ? '🎬 LIVE WALLPAPER (horizontal) pra teu PC — joga no Wallpaper Engine ou Lively Wallpaper! 🔥' : '🎬 LIVE WALLPAPER (vertical) pro teu celular — app de live wallpaper aceita direto! 🔥'}`;
-    return canal.send({ content: msg, files: [{ attachment: buf, name: `eco-live-${Date.now()}.mp4` }] }).catch(() => {});
+    const min = tipo === 'mobile' ? '1080x1920' : '1920x1080';
+    const cat = /anime/i.test(tema) ? '010' : '100';
+    let url = `https://wallhaven.cc/api/v1/search?categories=${cat}&purity=100&sorting=random&atleast=${min}`;
+    if (tema) url += `&q=${encodeURIComponent(tema)}`;
+    const q = await fetch(url, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null);
+    const lista = q?.data || [];
+    if (!lista.length) return canal.send(`🖼️ Acabou o estoque de **${tema || 'aleatório'}** agora — tenta outro tema ou pede de novo em segundos! 💀`).catch(() => {});
+    const item = escolhe(lista.slice(0, 8));
+    const img = await fetch(item.path);
+    if (!img.ok) return canal.send('🖼️ Essa veio rachada da fábrica, tenta de novo! 😂').catch(() => {});
+    const buf = Buffer.from(await img.arrayBuffer());
+    if (buf.length < 30000 || buf.length > 9.5 * 1024 * 1024) return canal.send('🖼️ Essa veio estragada, tenta de novo! 💀').catch(() => {});
+    const ext = ((item.path.split('.').pop() || 'jpg').match(/[a-z0-9]{2,4}/i) || ['jpg'])[0].toLowerCase();
+    const msg = tipo === 'mobile' ? '📱 Segura a imagem → defini como fundo do celular!' : '🖥️ Botão direito na imagem → defini como papel de parede!';
+    return canal.send({ content: msg, files: [{ attachment: buf, name: `eco-wall-${Date.now()}.${ext}` }] }).catch(() => {});
   } catch (e) { console.error('🖼️ Wall:', e.message); }
 }
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
