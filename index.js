@@ -876,7 +876,19 @@ async function enviarWall(canal, tipo, tema = '') {
   const relata = (o) => { try { pulsoWall({ canal: canal.name || '?', tipo, tema, ...o }); } catch {} };
   try {
     const agora = Date.now();
-    if (agora - (cooldownWall.get(canal.id) || 0) < 8000) return;
+    const ultima = cooldownWall.get(canal.id) || 0;
+    if (agora - ultima < 5000) {
+      const falta = Math.ceil((5000 - (agora - ultima)) / 1000);
+      // Silêncio aqui é crime: avisa o quanto falta (máx 1 aviso por vez pra não encher o canal)
+      const nudgeKey = `nudge:${canal.id}`;
+      const nudge = cooldownWall.get(nudgeKey) || 0;
+      if (Date.now() - nudge > 4000) {
+        cooldownWall.set(nudgeKey, Date.now());
+        relata({ etapa: 'cooldown', segundosFalta: falta });
+        return canal.send(`⏳ A turbina tá esfriando — a última saiu faz **${falta}s**! Pede de novo em ${falta} segundo${falta > 1 ? 's' : ''} que eu solto a próxima! 😂`).catch(() => {});
+      }
+      return;
+    }
     cooldownWall.set(canal.id, agora);
     await canal.sendTyping().catch(() => {});
     const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
