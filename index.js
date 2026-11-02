@@ -437,10 +437,43 @@ client.once('clientReady', async () => {
     await postarPainelVerificacao(guild);
     await postarRegras(guild);
     await montarPainelStats(guild);
+    await garantirGifts(guild);
     if (!NUVEM) monitorarTunel(guild).catch(() => {});
     console.log('✅ Painéis publicados no servidor');
   }
 });
+
+// 🎁 GIFT DAS ABAS DE WALLPAPER: gif de boas-vindas + linha de comando em cada aba.
+// Persistente: gift vive no repo (gift/wallpaper.gif) e a cada boot o bot CONFERE as abas —
+// se alguém apagar o gift ou a mensagem, repõe sozinho no próximo reinício. Sem drama, sem zerar.
+const GIFT_WALL = path.join(__dirname, 'gift', 'wallpaper.gif');
+async function garantirGifts(guild) {
+  try {
+    if (!fs.existsSync(GIFT_WALL)) return console.log('🎁 gift/wallpaper.gif não encontrado (ok, sem cartaz automático)');
+    const buf = fs.readFileSync(GIFT_WALL);
+    const cat = guild.channels.cache.find(c => c.type === 4 && /wallpaper/i.test(c.name));
+    if (!cat) return;
+    const abas = guild.channels.cache.filter(c => c.parentId === cat.id && c.type === 0).filter(c => !/live/i.test(c.name));
+    if (!abas.size) return;
+    for (const aba of abas.values()) {
+      const msgs = await aba.messages.fetch({ limit: 20 }).catch(() => null);
+      const jaTem = msgs && [...msgs.values()].some(m => m.author.id === client.user.id && ((m.content === '' && m.attachments.size > 0) || /papel de parede FULL HD|wallpaper full hd|wallpaper full hd pro/i.test(m.content)));
+      if (jaTem) { console.log(`🎁 gift já presente em #${aba.name} — nada a fazer`); continue; }
+      const bt = '`';
+      const coresLinha = `**${bt}wallpaper anime roxo${bt}** • **${bt}wallpaper azul${bt}** • **${bt}wallpaper dourado${bt}**...`;
+      const temas = /mobile|celular|phone/i.test(aba.name)
+        ? `**${bt}wallpaper festa${bt}** • **${bt}wallpaper gamers${bt}** • **${bt}wallpaper praia${bt}** • **${bt}wallpaper galaxia${bt}** • **${bt}wallpaper amor${bt}**`
+        : `**${bt}wallpaper festa${bt}** • **${bt}wallpaper gamers${bt}** • **${bt}wallpaper carro${bt}** • **${bt}wallpaper natureza${bt}** • **${bt}wallpaper praia${bt}**`;
+      const texto = /mobile|celular|phone/i.test(aba.name)
+        ? `📱 **Wallpaper FULL HD pro teu celular — recebe na hora!**\n\n💬 Digita **${bt}wallpaper${bt}** aqui no canal\n🎯 Temas: ${temas}\n🎨 Cores: ${coresLinha}`
+        : `🖥️ **Papel de parede FULL HD pro teu PC — recebe na hora!**\n\n💬 Digita **${bt}wallpaper${bt}** aqui no canal\n🎯 Temas: ${temas}\n🎨 Cores: ${coresLinha}`;
+      await aba.send({ files: [{ attachment: buf, name: 'wallpaper.gif' }] }).catch(() => {});
+      await new Promise(r => setTimeout(r, 800));
+      const posted = await aba.send(texto).catch(() => null);
+      console.log(`🎁 gift repostado em #${aba.name} (gif+texto: ${posted ? 'ok' : 'texto falhou'})`);
+    }
+  } catch (e) { console.error('🎁 gift:', e.message); }
+}
 
 client.on('interactionCreate', async (it) => {
   try {
