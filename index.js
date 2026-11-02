@@ -293,6 +293,18 @@ http.createServer((req, res) => {
     return;
   }
   console.log('📄 req:', req.method, ruta);
+  if (ruta === '/eco-pulso') {
+    const ws = (() => { try { return [...client.ws.shards].map(s => ({ status: s.status, ping: s.ping })); } catch { return null; } })();
+    return endJson(res, {
+      boot: new Date(PULSO.boot).toISOString(),
+      pronto: PULSO.pronto,
+      gateway: PULSO.rawEventos ? { ultimoEvento: new Date(PULSO.ultimoRaw || 0).toISOString(), segundosEmudecido: Math.floor((Date.now() - (PULSO.ultimoRaw || 0)) / 1000) } : { ultimoEvento: null, segundosEmudecido: Math.floor((Date.now() - PULSO.boot) / 1000) },
+      shard: ws,
+      servidores: client.guilds.cache.size,
+      ultimasMensagens: PULSO.lasts.slice(-10),
+      wallpeds: PULSO.wall.slice(-10)
+    });
+  }
   const mapa = new Map([
     ['/', PORTFOLIO], ['/index.html', PORTFOLIO], ['/verificar.html', VERIFICAR], ['/bemvindo.html', BEMVINDO], ['/regras.pdf', PDF_REGRAS],
     ['/entrada.gif', GIF_ENTRADA], ['/saida.gif', GIF_SAIDA], ['/usuario.gif', GIF_USUARIO], ['/regras.gif', GIF_REGRAS],
@@ -307,7 +319,15 @@ http.createServer((req, res) => {
   });
 }).listen(SERVE_PORT, () => console.log(`🖥️ Servidor web do portfólio: porta ${SERVE_PORT}`));
 
+// endJson helper:
 function endJson(res, obj) { try { res.writeHead(200, {'Content-Type':'application/json'}); res.end(JSON.stringify(obj)); } catch {} }
+
+// ═══════════ 🫀 PULSO: diagnóstico ao vivo do ECO (rota /eco-pulso) ═══════════
+// Expõe: quando o bot subiu, status do gateway (ouvido do Discord), últimas mensagens recebidas
+// e todos os pedidos de wallpaper — pra diagnosticar "digitei e nada" sem precisar de log do Render.
+const PULSO = { boot: Date.now(), pronto: null, lasts: [], wall: [] };
+function pulsoMsg(obj) { PULSO.lasts.push({ em: new Date().toISOString(), ...obj }); if (PULSO.lasts.length > 15) PULSO.lasts = PULSO.lasts.slice(-10); }
+function pulsoWall(obj) { PULSO.wall.push({ em: new Date().toISOString(), ...obj }); if (PULSO.wall.length > 15) PULSO.wall = PULSO.wall.slice(-10); }
 
 // ═══════════ Túnel automático + VIGIA (relança se cair) ═══════════
 async function monitorarTunel(guild) {
@@ -396,6 +416,18 @@ client.once('clientReady', async () => {
   try { await client.application.commands.set(cmds, GUILD_ID); console.log('✅ Comandos slash registrados'); }
   catch (e) { console.error('⚠️ Comandos:', e.message); }
   client.user.setPresence({ activities: [{ name: 'protegendo o GAMER ZONE 🛡️' }], status: 'online' });
+  PULSO.pronto = new Date().toISOString();
+  // 🩺 CÃO DE GUARDA: se o gateway (ouvido do bot) ficar mudo +6 min, reanima o processo.
+  // Sintoma tratado: HTTP responde mas o bot não recebe mensagem NENHUMA (gateway morto em silêncio).
+  client.on('raw', () => { PULSO.ultimoRaw = Date.now(); PULSO.rawEventos = (PULSO.rawEventos || 0) + 1; });
+  setInterval(() => {
+    const mudo = Date.now() - (PULSO.ultimoRaw || PULSO.boot);
+    if (mudo > 6 * 60 * 1000) {
+      console.error(`💀 Gateway mudo há ${Math.floor(mudo / 1000)}s — reanimando (reinício forçado)...`);
+      try { client.destroy(); } catch {}
+      setTimeout(() => process.exit(1), 1500); // Render reergue o serviço automaticamente
+    }
+  }, 60 * 1000);
 
   // Painéis + permissões + túnel com VIGIA automático
   if (process.env.ECO_BASE) { await baixarAssets(); refrescarGifs(); }
@@ -813,12 +845,14 @@ try { Promise.allSettled(Object.values(GIF_CATALOGO).flat().map(id => gifAnexo(`
 // PC → Full HD horizontal | MOBILE → Full HD vertical | LIVE PC/MOBILE → MP4 (precisa PEXELS_API_KEY)
 // 🏷️ TEMAS: a galera fala "wallpaper festa" → o motor busca "party" direitinho
 const MAPA_TEMA = {
-  festa: 'party', festas: 'party', gamers: 'gaming', gamer: 'gaming', jogos: 'gaming', jogo: 'gaming',
-  natureza: 'nature', cidade: 'city', espaco: 'space', galaxia: 'galaxy', carro: 'car', carros: 'car',
+  game: 'gaming', games: 'gaming', festa: 'party', festas: 'party', gamers: 'gaming', gamer: 'gaming', jogos: 'gaming', jogo: 'gaming',
+  natureza: 'nature', paisagem: 'landscape', paisagens: 'landscape', cidade: 'city', espaco: 'space', galaxia: 'galaxy', carro: 'car', carros: 'car',
   amor: 'love', coracao: 'love', abstrato: 'abstract', flor: 'flowers', flores: 'flowers',
   praia: 'beach', mar: 'ocean', noite: 'night', moto: 'motorcycle', futebol: 'soccer',
   bob: 'sports', esporte: 'sports', musica: 'music', montanha: 'mountain', inverno: 'winter',
-  neve: 'snow', fogo: 'fire', fumaça: 'smoke', neons: 'neon', neon: 'neon', auto: 'car'
+  neve: 'snow', fogo: 'fire', fumaça: 'smoke', neons: 'neon', neon: 'neon', auto: 'car',
+  gato: 'cat', gatos: 'cat', cachorro: 'dog', cachorros: 'dog', lobo: 'wolf', lobos: 'wolf',
+  tigre: 'tiger', tigres: 'tiger', lua: 'moon', sol: 'sun', chuva: 'rain'
 };
 function traduzTema(t) {
   const limpa = (t || '').toLowerCase().replace(/[^\w\sáàâãéêíóôõúç]/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -839,6 +873,7 @@ function tipoWall(canal) {
   return mobile ? 'mobile' : 'pc';
 }
 async function enviarWall(canal, tipo, tema = '') {
+  const relata = (o) => { try { pulsoWall({ canal: canal.name || '?', tipo, tema, ...o }); } catch {} };
   try {
     const agora = Date.now();
     if (agora - (cooldownWall.get(canal.id) || 0) < 8000) return;
@@ -846,21 +881,27 @@ async function enviarWall(canal, tipo, tema = '') {
     await canal.sendTyping().catch(() => {});
     const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
     const min = tipo === 'mobile' ? '1080x1920' : '1920x1080';
+    const minW = tipo === 'mobile' ? 1080 : 1920, minH = tipo === 'mobile' ? 1920 : 1080;
     const cat = /anime/i.test(tema) ? '010' : '100';
     let url = `https://wallhaven.cc/api/v1/search?categories=${cat}&purity=100&sorting=random&atleast=${min}`;
     if (tema) url += `&q=${encodeURIComponent(tema)}`;
     const q = await fetch(url, { headers: UA }).then(r => r.ok ? r.json() : null).catch(() => null);
-    const lista = q?.data || [];
-    if (!lista.length) return canal.send(`🖼️ Acabou o estoque de **${tema || 'aleatório'}** agora — tenta outro tema ou pede de novo em segundos! 💀`).catch(() => {});
+    const listaBruta = q?.data || [];
+    // 🔍 QUALIDADE GARANTIDA: só passa quem a fonte JÁ garante ter Full HD de verdade (dimensões oficiais)
+    const hd = listaBruta.filter(x => (x.width || 0) >= minW && (x.height || 0) >= minH);
+    const lista = hd.length ? hd : listaBruta;
+    relata({ etapa: 'busca', achados: lista.length, hd: hd.length, fonteOk: !!q });
+    if (!lista.length) { relata({ etapa: 'vazio' }); return canal.send(`🖼️ Acabou o estoque de **${tema || 'aleatório'}** agora — tenta outro tema ou pede de novo em segundos! 💀`).catch(() => {}); }
     const item = escolhe(lista.slice(0, 8));
     const img = await fetch(item.path);
-    if (!img.ok) return canal.send('🖼️ Essa veio rachada da fábrica, tenta de novo! 😂').catch(() => {});
+    if (!img.ok) { relata({ etapa: 'downloadFalhou', status: img.status }); return canal.send('🖼️ Essa veio rachada da fábrica, tenta de novo! 😂').catch(() => {}); }
     const buf = Buffer.from(await img.arrayBuffer());
-    if (buf.length < 30000 || buf.length > 9.5 * 1024 * 1024) return canal.send('🖼️ Essa veio estragada, tenta de novo! 💀').catch(() => {});
+    if (buf.length < 80000 || buf.length > 9.5 * 1024 * 1024) { relata({ etapa: 'pesoInvalido', bytes: buf.length }); return canal.send('🖼️ Essa veio estragada, tenta de novo! 💀').catch(() => {}); }
     const ext = ((item.path.split('.').pop() || 'jpg').match(/[a-z0-9]{2,4}/i) || ['jpg'])[0].toLowerCase();
     const msg = tipo === 'mobile' ? '📱 Segura a imagem → defini como fundo do celular!' : '🖥️ Botão direito na imagem → defini como papel de parede!';
+    relata({ etapa: 'entregue', bytes: buf.length, res: `${item.width}x${item.height}` });
     return canal.send({ content: msg, files: [{ attachment: buf, name: `eco-wall-${Date.now()}.${ext}` }] }).catch(() => {});
-  } catch (e) { console.error('🖼️ Wall:', e.message); }
+  } catch (e) { relata({ etapa: 'erro', erro: (e && e.message) || '?', erroMsg: true }); console.error('🖼️ Wall:', e.message); }
 }
 const reacaoZoeira = () => escolhe(['😂', '💀', '😹', '🤣', '🤡', '😏', '🔥', '👀', '😅', '🍿', '🌟', '🥶', '😭', '☠️', '🤝']);
 
@@ -876,6 +917,7 @@ setInterval(() => fetch(URL_PROPRIA).catch(() => {}), 3 * 60 * 1000);
 client.on('messageCreate', async (msg) => {
   try {
     if (msg.author.bot || !msg.guild) return;
+    try { pulsoMsg({ canal: msg.channel.name || '?', categoria: (msg.channel.parent && msg.channel.parent.name) || '', autor: (msg.author.username || '').slice(0, 24), texto: (msg.content || '').slice(0, 80) }); } catch {}
 
     // 🖼️ ABA WALLPAPERS: digitou "wallpaper" (ou "wallpaper festa", "wallpaper gamers"...)
     // no canal da aba → entrega a do tipo do canal, do TEMA se informou. FORA das abas: nada.
