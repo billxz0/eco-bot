@@ -533,6 +533,8 @@ const PROMPT_ECO = [
   '- A REGRA MÁXIMA: responda ao CONTEÚDO ESPECÍFICO que a pessoa disse — o detalhe, o anúncio, a pergunta exata (2 perguntas = 2 respostas). Nunca genérica, nunca em outro assunto.',
   '- O CONTEÚDO É REI: primeiro entrega o que foi pedido/dito (resposta, opinião, reação AO QUE ELE FALOU); o deboche vem EM CIMA desse conteúdo, amarrado nele. Zoeira desconectada do assunto ("nada com nada", piada que não tem a ver com o papo) é o crime MAIS GRAVE aqui — pior que falta de humor, porque quem responde besteira sem relação tá falando sozinho, e gente não fala sozinho. Mensagem normal/útil? Resposta útil e natural, com tempero leve no máximo — NUNCA força piada grande em cima de nada.',
   '- Gíria BR decodificada nativo ("cf", "mmg", "rolê", "treta", "cringe"...), sem pedir tradução.',
+  '- CADASTRO DE AMIGOS (memorize SIM): o que a pessoa CONFIRMA sobre si mesma — profissão, idade, gosto, time, projeto, casa, plano, psicologia dela — fica gravado como contexto da amizade e pode reaparecer natural ("tu que trabalha com rede, né?").',
+  '- ASSUNTO MORTO É ASSUNTO ENTERRADO: a conversa pra diante — tópico encerrado NÃO reaparece do nada; releia o histórico e siga o fio ATUAL. Voltar em tema que a galera já enterrou ( "aquele dia que..." sem contexto novo) = robô-arquivista (crime). Fatos sobre a galera GRAVAM; tópicos encerrados passam.',
   '',
   'PERGUNTA SÉRIA OU TÉCNICA (o cérebro de verdade por trás do deboche):',
   '- "Como faz", "qual o melhor", "por que", "me explica", desabafo, pedido de ajuda: resposta CORRETA, profunda e precisa — causa raiz, contas exatas, prós/contras reais, código que compila, NÚMERO/versão certos quando existem. Zero enrolação introdutória ("ótima pergunta!" é crime). ZERO piada sobre o assunto; um deboche leve no fim, se couber.',
@@ -674,7 +676,7 @@ let configSeguranca = 'AUTO'; // 'AUTO' = testando BLOCK_NONE; array = trava ven
 let evitarThinking = false;   // se o modelo rejeitar thinkingConfig, fica falso pra sempre no boot
 
 async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
-  const hist = (memoriaEco.get(cid) || []).slice(-14);
+  const hist = (memoriaEco.get(cid) || []).slice(-8);
   const perguntaFinal = realInfo
     ? `[INFO REAL DO SISTEMA: ${realInfo}]\n\n${nomeAutor} fala pra você: ${pergunta}`
     : `${nomeAutor} fala pra você: ${pergunta}`;
@@ -705,24 +707,24 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     // pergunta real/longa = raciocínio completo (interpretação afiada)
     const curta = pergunta.length < 40 && !/\?/.test(pergunta);
     const pensar = pergunta.length > 140 || /(por que|porque|explica|me ensina|diferença|como faz|como funciona|qual (é|e|são)|qual o melhor)/i.test(pergunta);
-    const cfgPensar = { temperature: 0.8, maxOutputTokens: 800 };
+    const cfgPensar = { temperature: 0.8, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 512 } };
+    const cfgPensarSem = { temperature: 0.8, maxOutputTokens: 800 };
     const cfgMedia = { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 256 } };
     const cfgCurta = { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } };
     const base = { system_instruction: { parts: [{ text: PROMPT_ECO }] }, contents };
-    let resp = await chamar({ ...base, generationConfig: pensar ? cfgPensar : curta ? (evitarThinking ? cfgPensar : cfgCurta) : (evitarThinking ? cfgPensar : cfgMedia) });
+    let resp = await chamar({ ...base, generationConfig: pensar ? cfgPensar : curta ? (evitarThinking ? cfgPensarSem : cfgCurta) : (evitarThinking ? cfgPensarSem : cfgMedia) });
     if (!resp.ok && resp.status === 400) {
       // 2ª tentativa: sem thinkingConfig (campo às vezes rejeitado). Se passar, a causa era o campo.
-      resp = await chamar({ ...base, generationConfig: cfgPensar });
+      resp = await chamar({ ...base, generationConfig: cfgPensarSem });
       if (resp.ok) {
         if (curta) evitarThinking = true; // campo thinking foi recusado: não repete a partir de agora
       } else if (resp.status === 400) {
         // 3ª tentativa: SEM config de segurança custom (filtros default do Google) + trava de vez
-        const r3 = await fetch(URL_GEM, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system_instruction: base.system_instruction, contents, generationConfig: cfgPensar }) });
+        const r3 = await fetch(URL_GEM, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system_instruction: base.system_instruction, contents, generationConfig: cfgPensarSem }) });
         resp = { r: r3, ok: r3.ok, status: r3.status, d: r3.ok ? await r3.json() : null };
         if (resp.ok) configSeguranca = null;
       }
-    } else if (resp.ok && configSeguranca === 'AUTO') {
-      // 1ª tentativa passou COM BLOCK_NONE → trava a vitória (mesma config dali em diante, sem re-teste)
+    } else if (resp.ok && configSeguranca === 'AUTO') {      // 1ª tentativa passou COM BLOCK_NONE → trava a vitória (mesma config dali em diante, sem re-teste)
       configSeguranca = [
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -744,7 +746,7 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     }
     if (!texto) throw new Error('Resposta vazia do Gemini');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
-    memoriaEco.set(cid, hist.slice(-16));
+    memoriaEco.set(cid, hist.slice(-12));
     return texto.trim();
   }
   if (GROQ_KEY) {
@@ -764,7 +766,7 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     const texto = d.choices?.[0]?.message?.content;
     if (!texto) throw new Error('Resposta vazia do Groq');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
-    memoriaEco.set(cid, hist.slice(-16));
+    memoriaEco.set(cid, hist.slice(-12));
     return texto.trim();
   }
   throw new Error('SEM_CHAVE');
@@ -900,7 +902,7 @@ client.on('messageCreate', async (msg) => {
       const catalogoMidias = Object.entries(eco_midias.users || {})
         .flatMap(([, lista]) => lista)
         .map(f => `#${f.id} de ${f.de || 'alguém'} (${(f.em || '').slice(0, 10)}): ${f.desc}`)
-        .slice(-25)
+        .slice(-12)
         .join('; ');
       if (catalogoMidias) {
         realInfo += ` MÍDIAS ARQUIVADAS do servidor (pode citar, zoar, argumentar ou exibir com a tag [ENVIAR_MIDIA #ID] — inclusive a foto de um membro em conversa com outro): ${catalogoMidias}`;
