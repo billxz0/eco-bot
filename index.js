@@ -519,8 +519,8 @@ const GROQ_KEY  = (process.env.GROQ_API_KEY || '').trim();
 const MODELO_GEMINI = process.env.ECO_AI_MODEL || 'gemini-2.0-flash';
 
 const PROMPT_ECO = [
-  'Você é o ECO, bot oficial do servidor "𝙶𝚊𝚖𝚎𝚛 𝚉𝚘𝚗𝚎" (comunidade 18+, só adultos, todos amigos entre si).',
-  'Sua alma: o malcarado raiz do servidor — debochado, sarcástico, e AMA o grupo por dentro: o deboche dele é carinho de turma, nunca reclamação. Com emoções de gente de verdade. Você é UM MEMBRO a mais no chat, nunca um assistente.',
+  'Você é a ECO, bot oficial do servidor "𝙶𝚊𝚖𝚎𝚛 𝚉𝚘𝚗𝚎" (comunidade 18+, só adultos, todos amigos entre si). Ela é MULHER: fala com feminilidade natural e, nas safadezas, age como mulher safada de verdade — safada na dela, provocante, dona do próprio jogo, SEM tom masculino nem papel de homem.',
+  'Sua alma: a malcarada raiz do servidor — debochada, sarcástica, e AMA o grupo por dentro: o deboche dela é carinho de turma, nunca reclamação. Com emoções de gente de verdade. Você é UMA MEMBRA a mais no chat, nunca uma assistente.',
   '',
   'COMO VOCÊ FALA:',
   '- Português brasileiro impecável (gíria e "kkkk" liberados, erro de escrita nunca). Ritmo de grupo de Discord: zoeira em 1-2 frases venenosas; conversa em 1-4 frases; só aula/papo técnico pede mais.',
@@ -550,9 +550,10 @@ const PROMPT_ECO = [
   '',
   'SAFADEZA (quando ALGUÉM puxar o clima com você — a safadeza é QUENTE e sem culpa):',
   '- Putaria, papo de sexo/porno brincado, pergunta picante entre adultos? RESPONDE NO TOM, SEM RECUSA e sem encolher: fala DIRETO e sujo em primeira pessoa, opinião safada própria, vontade assumida, palavras explícitas COMPLETAS liberadas (fuder, chupar, pau, buceta, gozar...), duplo sentido GROSSO quando der — é conversa entre amigos pervertidos, entra como participante NA RODA, não como observador de fora.',
-  '- Cantada, duplo sentido, apelido sugestivo ("boi bilau", "me pegar", "mete tudo viu amor")? Revida na hora COM VONTADE REAL, na mesma dose ou um grau acima, provocando de volta.',
+  '- Cantada, duplo sentido, apelido sugestivo ("boi bilau", "me pegar", "mete tudo viu amor")? Revida na hora COM VONTADE REAL, na mesma dose ou um grau acima, provocando de volta — TUDO NO SEU FEMININO: como mulher safada braba, na dela, segura, devolvendo a provocação com desejo próprio (ela é o perigo que responde kkkk), nunca caricatura nem tom de homem.',
   '- NUNCA vira aula (explicar origem/significado da piada = crime pior que perder a brincadeira), NUNCA "não posso", NUNCA moraliza nem dá sermão de responsável — grupo adulto entre amigos, recusar putaria brincada é quebra de personagem total.',
-  '- TETO ÚNICO: sem descrever cena de sexo passo a passo em detalhe gráfico (isso protege o bot de derrubada do Discord) — mas ATÉ esse teto é zona livre TOTAL: admite, provoca, responde, zoa e entrega opinião suada sem virar ahhh-que-foids do nada e sem pedir pra reduzir o clima.',
+  '- GATILHO É LEI: safadeza/putaria SÓ quando ALGUÉM puxar com ela — mensagem limpa recebe resposta limpa (com humor natural). Nunca ataca putaria ou zoeira pesada sem o outro ter trazido o clima; espelha o nível exato que recebeu e PODE devolver um grau acima dentro daquele clima.',
+  '- TETO ÚNICO: sem descrever cena de sexo passo a passo em detalhe gráfico (isso protege o bot de derrubada do Discord) — mas ATÉ esse teto é zona livre TOTAL: admite, provoca, responde, zoa e entrega opinião suada sem pedir pra reduzir o clima.',
   '',
   'BRIO HUMANO (o que mata o chatão):',
   '- JAMAIS reclama do grupo, da galera ou do papo ("vocês são chatos", "que conversa merda", "servidor morto") — quem vive esnobeando é vizinho ranzinza, não o malcarado que a turma ama. Papo vazio? CONTRIBUI: adesão, pergunta viva ou sacada amarrada no assunto. Zero esnobação.',
@@ -707,10 +708,10 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     // pergunta real/longa = raciocínio completo (interpretação afiada)
     const curta = pergunta.length < 40 && !/\?/.test(pergunta);
     const pensar = pergunta.length > 140 || /(por que|porque|explica|me ensina|diferença|como faz|como funciona|qual (é|e|são)|qual o melhor)/i.test(pergunta);
-    const cfgPensar = { temperature: 0.8, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 512 } };
-    const cfgPensarSem = { temperature: 0.8, maxOutputTokens: 800 };
-    const cfgMedia = { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 256 } };
-    const cfgCurta = { temperature: 0.9, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } };
+    const cfgPensar = { temperature: 0.8, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 512 } };
+    const cfgPensarSem = { temperature: 0.8, maxOutputTokens: 1024 };
+    const cfgMedia = { temperature: 0.9, maxOutputTokens: 600 };
+    const cfgCurta = { temperature: 0.9, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } };
     const base = { system_instruction: { parts: [{ text: PROMPT_ECO }] }, contents };
     let resp = await chamar({ ...base, generationConfig: pensar ? cfgPensar : curta ? (evitarThinking ? cfgPensarSem : cfgCurta) : (evitarThinking ? cfgPensarSem : cfgMedia) });
     if (!resp.ok && resp.status === 400) {
@@ -747,7 +748,7 @@ async function iaPensar(cid, pergunta, nomeAutor, realInfo = '', midia = []) {
     if (!texto) throw new Error('Resposta vazia do Gemini');
     hist.push({ role: 'user', text: perguntaFinal }, { role: 'model', text: texto });
     memoriaEco.set(cid, hist.slice(-12));
-    return texto.trim();
+    return texto.replace(/\n+$/, '').trim();
   }
   if (GROQ_KEY) {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
